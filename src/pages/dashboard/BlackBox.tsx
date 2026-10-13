@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import NovaOrb from "@/components/blackbox/NovaOrb";
 import { motion, AnimatePresence } from "framer-motion";
 
-const LazyMeetingProvider = lazy(() => import("@videosdk.live/react-sdk").then(m => ({ default: m.MeetingProvider })));
-const LazyMeetingView = lazy(() => import("@/components/videosdk/MeetingView"));
+import { LiveKitRoom } from "@livekit/components-react";
+import LiveKitMeetingView from "@/components/livekit/LiveKitMeetingView";
 import { useBlackBoxSession } from "@/hooks/useBlackBoxSession";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -21,7 +21,7 @@ const SESSION_MESSAGES = [
 const BlackBox = () => {
   const isMobile = useIsMobile();
   const {
-    activeSession, isRequesting, callState, token,
+    activeSession, isRequesting, callState, token, liveKitUrl,
     requestSession, cancelSession, endSession, retryConnection,
     fetchToken, onCallJoined, onCallError,
   } = useBlackBoxSession();
@@ -41,7 +41,7 @@ const BlackBox = () => {
   const isReady = callState === "ready";
   const isJoining = callState === "joining";
   const isFailed = callState === "failed";
-  const isJoined = callState === "joined" && !!token && !!activeSession?.room_id;
+  const isJoined = callState === "joined" && !!token && !!activeSession;
 
 
 
@@ -173,27 +173,36 @@ const BlackBox = () => {
         </AnimatePresence>
       </div>
 
-      {/* Hidden meeting provider */}
-      {!!token && !!activeSession?.room_id && callState !== "idle" && (
+      {/* Hidden LiveKit room */}
+      {!!token && !!activeSession && callState !== "idle" && (
         <div
-          key={`${activeSession.id}-${activeSession.room_id}`}
+          key={activeSession.id}
           style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0, zIndex: -1 }}
           aria-hidden="true"
         >
-          <Suspense fallback={null}>
-            <LazyMeetingProvider
-              config={{ meetingId: activeSession.room_id, micEnabled: true, webcamEnabled: false, name: profile?.username || "Anonymous", participantId: profile?.id || user?.id, debugMode: false }}
-              token={token}
-              joinWithoutUserInteraction={false}
-            >
-              <LazyMeetingView
-                meetingId={activeSession.room_id} onMeetingLeave={endSession} audioOnly sessionId={activeSession.id}
-                enableMonitoring={false} autoJoin onJoined={onCallJoined} onJoinError={onCallError}
-                hideControls onToggleMicReady={handleToggleMicReady} onMicStatusChange={handleMicStatusChange}
-                onAudioLevelChange={setAudioLevel}
-              />
-            </LazyMeetingProvider>
-          </Suspense>
+          <LiveKitRoom
+            token={token}
+            serverUrl={liveKitUrl || import.meta.env.VITE_LIVEKIT_URL || ""}
+            connect={true}
+            audio={true}
+            video={false}
+            onDisconnected={endSession}
+          >
+            <LiveKitMeetingView
+              meetingId={activeSession.room_id || `bb_${activeSession.id}`}
+              onMeetingLeave={endSession}
+              audioOnly
+              sessionId={activeSession.id}
+              sessionType="blackbox"
+              enableMonitoring={false}
+              onJoined={onCallJoined}
+              onJoinError={onCallError}
+              hideControls
+              onToggleMicReady={handleToggleMicReady}
+              onMicStatusChange={handleMicStatusChange}
+              onAudioLevelChange={setAudioLevel}
+            />
+          </LiveKitRoom>
         </div>
       )}
 

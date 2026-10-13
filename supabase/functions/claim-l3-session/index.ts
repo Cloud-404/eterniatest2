@@ -58,94 +58,44 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch session — only allow claiming non-completed sessions
-    const { data: session, error: sessErr } = await admin
-      .from("blackbox_sessions")
-      .select("id, escalation_history, flag_level, status, therapist_id")
-      .eq("id", session_id)
-      .gte("flag_level", 3)
-      .in("status", ["active", "accepted", "queued", "escalated"])
-      .single();
+    // Use atomic claim RPC
+    const { data: claimData, error: claimErr } = await admin.rpc("claim_l3_session_atomic", {
+      _session_id: session_id,
+      _expert_id: user.id,
+    });
 
-    if (sessErr || !session) {
-      return new Response(JSON.stringify({ error: "Session not found or not L3+" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check if already claimed by another expert
-    const history = Array.isArray(session.escalation_history) ? session.escalation_history : [];
-    const existingClaim = (history as any[]).find(
-      (entry: any) => entry?.type === "expert_claimed"
-    );
-
-    if (existingClaim) {
-      if (existingClaim.expert_id === user.id) {
-        // Already claimed by this expert — OK
-        return new Response(JSON.stringify({ success: true, already_claimed: true }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      // Claimed by another expert
-      return new Response(JSON.stringify({ error: "Session already claimed by another expert", claimed_by: existingClaim.expert_id }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Atomic claim: append expert_claimed entry
-    const claimEntry = {
-      type: "expert_claimed",
-      expert_id: user.id,
-      timestamp: new Date().toISOString(),
-    };
-    const joinEntry = {
-      type: "expert_joined",
-      expert_id: user.id,
-      timestamp: new Date().toISOString(),
-    };
-
-    const updatedHistory = [...history, joinEntry, claimEntry];
-
-    const { data: updated, error: updateErr } = await admin
-      .from("blackbox_sessions")
-      .update({
-        status: "active",
-        escalation_history: updatedHistory,
-      })
-      .eq("id", session_id)
-      .select("id")
-      .maybeSingle();
-
-    if (updateErr) {
-      return new Response(JSON.stringify({ error: "Failed to claim session", details: updateErr.message }), {
+    if (claimErr) {
+      return new Response(JSON.stringify({ error: claimErr.message || "Failed to claim session" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!updated) {
-      return new Response(JSON.stringify({ error: "Session was modified concurrently" }), {
-        status: 409,
+    const claimResult = Array.isArray(claimData) ? claimData[0] : claimData;
+    if (!claimResult || !claimResult.success) {
+      return new Response(
+        JSON.stringify({
+          error: claimResult?.message || "Session could not be claimed",
+          claimed_by: claimResult?.claimed_by,
+        }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Success response
+    return new Response(
+      JSON.stringify({
+        success: true,
+        already_claimed: claimResult.already_claimed,
+        claimed_by: claimResult.claimed_by,
+      }),
+      {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Notify therapist
-    if (session.therapist_id) {
-      await admin.from("notifications").insert({
-        user_id: session.therapist_id,
-        type: "expert_joined",
-        title: "Expert has joined your session",
-        message: "An expert has joined the escalated session. You may stay or leave.",
-        metadata: { session_id, expert_id: user.id },
-      });
-    }
-
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      }
+    );
   } catch (error) {
     console.error("claim-l3-session error:", error);
     return new Response(JSON.stringify({ error: error.message }), {

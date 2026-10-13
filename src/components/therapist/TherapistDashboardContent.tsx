@@ -5,10 +5,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { createVideoSDKRoom, getVideoSDKToken } from "@/lib/videosdk";
-
-const MeetingProvider = lazy(() => import("@videosdk.live/react-sdk").then(m => ({ default: m.MeetingProvider })));
-const MeetingView = lazy(() => import("@/components/videosdk/MeetingView"));
+import { getLiveKitToken } from "@/lib/livekit";
+import { LiveKitRoom } from "@livekit/components-react";
+import LiveKitMeetingView from "@/components/livekit/LiveKitMeetingView";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import {
@@ -60,6 +59,7 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
   // Active session state
   const [activeSession, setActiveSession] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [liveKitUrl, setLiveKitUrl] = useState<string | null>(null);
   const [sessionTimer, setSessionTimer] = useState(0);
   const [sessionNotes, setSessionNotes] = useState("");
   const [isAccepting, setIsAccepting] = useState(false);
@@ -72,7 +72,7 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
   // History
   const [history, setHistory] = useState<EscalationRecord[]>([]);
 
-  // Ref to hold the VideoSDK leave function for programmatic disconnect
+  // Ref to hold the LiveKit leave function for programmatic disconnect
   const leaveCallRef = useRef<(() => void) | null>(null);
   const captureSnippetRef = useRef<(() => Promise<string>) | null>(null);
 
@@ -170,13 +170,12 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
       if (data && data.length > 0) {
         setActiveSession(data[0]);
         setActiveTab("session");
-        if ((data[0] as any).room_id) {
-          try {
-            const t = await getVideoSDKToken();
-            setToken(t);
-          } catch (error: any) {
-            toast.error(error.message || "Failed to reconnect to audio session");
-          }
+        try {
+          const res = await getLiveKitToken({ kind: "blackbox", id: data[0].id });
+          setToken(res.token);
+          setLiveKitUrl(res.url);
+        } catch (error: any) {
+          toast.error(error.message || "Failed to reconnect to audio session");
         }
       }
     };
@@ -214,7 +213,7 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
     if (!user) return;
     setIsAccepting(true);
     try {
-      const { token: t, roomId } = await createVideoSDKRoom();
+      const canonicalRoomId = `bb_${sessionId}`;
 
       // Set status to "accepted" first (not "active") — active only after both join
       const { data: updated, error } = await supabase
@@ -222,7 +221,7 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
         .update({
           therapist_id: user.id,
           status: "accepted",
-          room_id: roomId,
+          room_id: canonicalRoomId,
           started_at: new Date().toISOString(),
         })
         .eq("id", sessionId)
@@ -233,7 +232,9 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
       if (error) throw error;
       if (!updated) throw new Error("Session was already claimed by another therapist");
 
-      setToken(t);
+      const res = await getLiveKitToken({ kind: "blackbox", id: sessionId });
+      setToken(res.token);
+      setLiveKitUrl(res.url);
       setActiveSession(updated);
       setActiveTab("session");
       toast.success("Session accepted — waiting for student to join…");
@@ -258,6 +259,7 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
 
     setActiveSession(null);
     setToken(null);
+    setLiveKitUrl(null);
     setSessionNotes("");
     setSessionTimer(0);
     setActiveTab("queue");
@@ -513,30 +515,26 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
               </div>
 
               {/* Audio session */}
-              {token && activeSession.room_id ? (
-                <Suspense fallback={<div className="text-center py-8 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /><p className="text-sm">Loading call...</p></div>}>
-                <div className="rounded-xl bg-card border border-border overflow-hidden"
-                  key={`${activeSession.id}-${activeSession.room_id}`}
+              {token && activeSession ? (
+                <div
+                  className="rounded-xl bg-card border border-border overflow-hidden"
+                  key={activeSession.id}
                 >
-                 <MeetingProvider
-                    config={{
-                      meetingId: activeSession.room_id,
-                      micEnabled: true,
-                      webcamEnabled: false,
-                      name: profile?.username || "Therapist",
-                      participantId: profile?.id || user?.id,
-                      debugMode: false,
-                    }}
+                  <LiveKitRoom
                     token={token}
-                    joinWithoutUserInteraction={false}
+                    serverUrl={liveKitUrl || import.meta.env.VITE_LIVEKIT_URL || ""}
+                    connect={true}
+                    audio={true}
+                    video={false}
+                    onDisconnected={endSession}
                   >
-                    <MeetingView
-                      meetingId={activeSession.room_id}
+                    <LiveKitMeetingView
+                      meetingId={activeSession.room_id || `bb_${activeSession.id}`}
                       onMeetingLeave={endSession}
                       audioOnly={true}
                       sessionId={activeSession.id}
+                      sessionType="blackbox"
                       enableMonitoring={true}
-                      autoJoin={true}
                       isTherapistView={true}
                       onLeaveReady={(leaveFn) => { leaveCallRef.current = leaveFn; }}
                       onJoined={async () => {
@@ -559,9 +557,8 @@ const TherapistDashboardContent = ({ isMobile }: { isMobile?: boolean }) => {
                       onCaptureSnippetReady={(fn) => { captureSnippetRef.current = fn; }}
                       onEscalate={() => setEscalationOpen(true)}
                     />
-                  </MeetingProvider>
+                  </LiveKitRoom>
                 </div>
-                </Suspense>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />

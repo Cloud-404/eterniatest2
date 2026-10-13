@@ -18,6 +18,9 @@ verify_jwt = false
 [functions.videosdk-token]
 verify_jwt = false
 
+[functions.livekit-token]
+verify_jwt = false
+
 [functions.ai-transcribe]
 verify_jwt = false
 

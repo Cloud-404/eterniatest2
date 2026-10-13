@@ -6,8 +6,8 @@ import { useBlackBoxSession } from "@/hooks/useBlackBoxSession";
 import { useAuth } from "@/contexts/AuthContext";
 import NovaOrb from "@/components/blackbox/NovaOrb";
 
-const MeetingProvider = lazy(() => import("@videosdk.live/react-sdk").then(m => ({ default: m.MeetingProvider })));
-const MeetingView = lazy(() => import("@/components/videosdk/MeetingView"));
+import { LiveKitRoom } from "@livekit/components-react";
+import LiveKitMeetingView from "@/components/livekit/LiveKitMeetingView";
 
 const SESSION_MESSAGES = [
   "Hi, This is your anonymous space.",
@@ -18,7 +18,7 @@ const SESSION_MESSAGES = [
 
 const MobileBlackBox = () => {
   const {
-    activeSession, isRequesting, callState, token,
+    activeSession, isRequesting, callState, token, liveKitUrl,
     requestSession, cancelSession, endSession, retryConnection,
     fetchToken, onCallJoined, onCallError,
   } = useBlackBoxSession();
@@ -38,7 +38,7 @@ const MobileBlackBox = () => {
   const isReady = callState === "ready";
   const isJoining = callState === "joining";
   const isFailed = callState === "failed";
-  const isJoined = callState === "joined" && !!token && !!activeSession?.room_id;
+  const isJoined = callState === "joined" && !!token && !!activeSession;
 
 
 
@@ -129,21 +129,36 @@ const MobileBlackBox = () => {
         </AnimatePresence>
       </div>
 
-      {!!token && !!activeSession?.room_id && callState !== "idle" && (
-        <Suspense fallback={null}>
-          <div key={`${activeSession.id}-${activeSession.room_id}`}
-            style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}
-            aria-hidden="true">
-            <MeetingProvider
-              config={{ meetingId: activeSession.room_id, micEnabled: true, webcamEnabled: false, name: profile?.username || "Anonymous", participantId: profile?.id || user?.id, debugMode: false }}
-              token={token} joinWithoutUserInteraction={false}>
-              <MeetingView meetingId={activeSession.room_id} onMeetingLeave={endSession} audioOnly sessionId={activeSession.id}
-                enableMonitoring={false} autoJoin onJoined={onCallJoined} onJoinError={onCallError}
-                hideControls onToggleMicReady={handleToggleMicReady} onMicStatusChange={handleMicStatusChange}
-                onAudioLevelChange={setAudioLevel} />
-            </MeetingProvider>
-          </div>
-        </Suspense>
+      {!!token && !!activeSession && callState !== "idle" && (
+        <div
+          key={activeSession.id}
+          style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}
+          aria-hidden="true"
+        >
+          <LiveKitRoom
+            token={token}
+            serverUrl={liveKitUrl || import.meta.env.VITE_LIVEKIT_URL || ""}
+            connect={true}
+            audio={true}
+            video={false}
+            onDisconnected={endSession}
+          >
+            <LiveKitMeetingView
+              meetingId={activeSession.room_id || `bb_${activeSession.id}`}
+              onMeetingLeave={endSession}
+              audioOnly
+              sessionId={activeSession.id}
+              sessionType="blackbox"
+              enableMonitoring={false}
+              onJoined={onCallJoined}
+              onJoinError={onCallError}
+              hideControls
+              onToggleMicReady={handleToggleMicReady}
+              onMicStatusChange={handleMicStatusChange}
+              onAudioLevelChange={setAudioLevel}
+            />
+          </LiveKitRoom>
+        </div>
       )}
 
       <div className="pb-8 pt-4 flex items-center justify-center gap-4">

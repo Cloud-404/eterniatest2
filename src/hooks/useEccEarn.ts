@@ -30,21 +30,19 @@ export function useEccEarn() {
   const earnFromActivity = useMutation({
     mutationFn: async ({ amount, activity }: { amount: number; activity: string }) => {
       if (!user) throw new Error("Not authenticated");
-      
-      const actualAmount = Math.min(amount, remainingThisWeek);
-      if (actualAmount <= 0) {
-        throw new Error("Weekly earn cap reached (5 ECC/week)");
-      }
 
-      const { error } = await supabase.from("credit_transactions").insert({
-        user_id: user.id,
-        delta: actualAmount,
-        type: "earn" as const,
-        notes: activity,
+      const { data, error } = await supabase.rpc("earn_credits_activity", {
+        _amount: Math.min(Math.max(1, Math.round(amount)), 5),
+        _activity: activity,
       });
 
       if (error) throw error;
-      return actualAmount;
+      const res = data?.[0];
+      if (!res || !res.success) {
+        throw new Error(res?.message || "Weekly earn cap reached (5 ECC/week)");
+      }
+
+      return res.earned;
     },
     onSuccess: (earned) => {
       queryClient.invalidateQueries({ queryKey: ["weekly-earn"] });

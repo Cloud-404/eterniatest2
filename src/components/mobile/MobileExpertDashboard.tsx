@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import VideoCallModal from "@/components/videosdk/VideoCallModal";
+import { LiveKitCallModal } from "@/components/livekit/LiveKitCallModal";
 import ExpertL3AlertPanel from "@/components/expert/ExpertL3AlertPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -431,7 +431,7 @@ const MobileExpertDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      <VideoCallModal isOpen={callModal.open} onClose={() => setCallModal({ open: false, mode: "video" })} participantName={profile?.username || "Expert"} mode={callModal.mode} appointmentId={callModal.appointmentId} enableMonitoring={true} onCaptureSnippetReady={(fn) => { captureSnippetRef.current = fn; }} />
+      <LiveKitCallModal isOpen={callModal.open} onClose={() => setCallModal({ open: false, mode: "video" })} participantName={profile?.username || "Expert"} mode={callModal.mode} appointmentId={callModal.appointmentId} enableMonitoring={true} onCaptureSnippetReady={(fn) => { captureSnippetRef.current = fn; }} />
     </DashboardLayout>
   );
 };

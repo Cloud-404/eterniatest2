@@ -1,23 +1,24 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { MeetingProvider } from "@videosdk.live/react-sdk";
+import { LiveKitRoom } from "@livekit/components-react";
 import { Video, Phone, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createVideoSDKRoom, getVideoSDKToken } from "@/lib/videosdk";
+import { getLiveKitToken, MediaSessionKind } from "@/lib/livekit";
 import { supabase } from "@/integrations/supabase/client";
-import MeetingView from "./MeetingView";
-import { toast } from "@/hooks/use-toast";
+import LiveKitMeetingView from "./LiveKitMeetingView";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
-interface VideoCallModalProps {
+interface LiveKitCallModalProps {
   isOpen: boolean;
   onClose: () => void;
-  participantName: string;
+  participantName?: string;
   participantId?: string;
   mode?: "video" | "audio";
   appointmentId?: string;
   existingRoomId?: string;
   sessionId?: string;
   sessionType?: "blackbox" | "peer";
+  isL3?: boolean;
   enableMonitoring?: boolean;
   onRiskDetected?: (level: number, snippet: string) => void;
   isTherapistView?: boolean;
@@ -29,16 +30,17 @@ interface VideoCallModalProps {
   onAudioLevelChange?: (level: number) => void;
 }
 
-const VideoCallModal = ({
+export const LiveKitCallModal = ({
   isOpen,
   onClose,
-  participantName,
+  participantName = "Participant",
   participantId,
   mode = "video",
   appointmentId,
   existingRoomId,
   sessionId,
   sessionType = "blackbox",
+  isL3 = false,
   enableMonitoring = false,
   onRiskDetected,
   isTherapistView = false,
@@ -48,12 +50,13 @@ const VideoCallModal = ({
   onCallJoined,
   onEscalate,
   onAudioLevelChange,
-}: VideoCallModalProps) => {
+}: LiveKitCallModalProps) => {
   const queryClient = useQueryClient();
-  const [meetingId, setMeetingId] = useState<string | null>(null);
+  const [roomName, setRoomName] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const startInFlightRef = useRef(false); // prevent double startCall
+  const startInFlightRef = useRef(false);
 
   const isAudioOnly = mode === "audio";
 
@@ -61,82 +64,47 @@ const VideoCallModal = ({
     if (startInFlightRef.current || isLoading) return;
     startInFlightRef.current = true;
     setIsLoading(true);
+
     try {
+      let kind: MediaSessionKind;
+      let targetId: string;
+
       if (appointmentId) {
-        const { data: apt } = await supabase
-          .from("appointments")
-          .select("room_id")
-          .eq("id", appointmentId)
-          .single();
-
-        if (apt?.room_id) {
-          const t = await getVideoSDKToken();
-          setToken(t);
-          setMeetingId(apt.room_id);
-          return;
-        }
-
-        const { token: t, roomId } = await createVideoSDKRoom();
-        // Idempotent: only set room_id if still null
-        const { data: updated } = await supabase
-          .from("appointments")
-          .update({ room_id: roomId } as any)
-          .eq("id", appointmentId)
-          .is("room_id", null)
-          .select("room_id")
-          .maybeSingle();
-
-        // If another call already set room_id, use theirs
-        const finalRoomId = updated?.room_id || roomId;
-        if (!updated) {
-          // Re-read canonical room_id
-          const { data: reread } = await supabase
-            .from("appointments")
-            .select("room_id")
-            .eq("id", appointmentId)
-            .single();
-          if (reread?.room_id) {
-            setToken(t);
-            setMeetingId(reread.room_id);
-            return;
-          }
-        }
-
-        setToken(t);
-        setMeetingId(finalRoomId);
-        return;
-      }
-
-      if (existingRoomId) {
-        const t = await getVideoSDKToken();
-        setToken(t);
-        setMeetingId(existingRoomId);
+        kind = "appointment";
+        targetId = appointmentId;
+      } else if (sessionType === "peer" && sessionId) {
+        kind = "peer";
+        targetId = sessionId;
+      } else if (sessionId) {
+        kind = isL3 ? "l3" : "blackbox";
+        targetId = sessionId;
       } else {
-        const { token: t, roomId } = await createVideoSDKRoom();
-        setToken(t);
-        setMeetingId(roomId);
+        throw new Error("No session or appointment identifier specified.");
       }
+
+      const connection = await getLiveKitToken({ kind, id: targetId });
+
+      setToken(connection.token);
+      setServerUrl(connection.url);
+      setRoomName(connection.roomName);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to start call",
-        variant: "destructive",
-      });
+      console.error("[LiveKitCallModal] startCall error:", error);
+      toast.error(error.message || "Failed to start call");
     } finally {
       setIsLoading(false);
       startInFlightRef.current = false;
     }
-  }, [appointmentId, existingRoomId, isLoading]);
+  }, [appointmentId, sessionId, sessionType, isL3, isLoading]);
 
-  // Auto-start: fire once on open
+  // Auto-start when modal opens if requested
   useEffect(() => {
-    if (isOpen && autoStart && !token && !meetingId && !isLoading && !startInFlightRef.current) {
+    if (isOpen && autoStart && !token && !isLoading && !startInFlightRef.current) {
       startCall();
     }
-  }, [isOpen, autoStart]); // intentionally minimal deps
+  }, [isOpen, autoStart, token, isLoading, startCall]);
 
   const handleLeave = useCallback(async () => {
-    if (appointmentId && meetingId) {
+    if (appointmentId && token) {
       try {
         await supabase
           .from("appointments")
@@ -149,19 +117,20 @@ const VideoCallModal = ({
       }
     }
 
-    setMeetingId(null);
+    setRoomName(null);
     setToken(null);
+    setServerUrl(null);
     startInFlightRef.current = false;
     onClose();
-  }, [appointmentId, meetingId, onClose, queryClient]);
+  }, [appointmentId, token, onClose, queryClient]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-4xl h-[80vh] bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-4xl h-[80vh] bg-card border border-border rounded-2xl overflow-hidden flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border bg-card/50">
           <div className="flex items-center gap-3">
             {isAudioOnly ? (
               <Phone className="w-5 h-5 text-primary" />
@@ -171,9 +140,9 @@ const VideoCallModal = ({
             <span className="font-semibold font-display">
               {isAudioOnly ? "Audio" : "Video"} Session
             </span>
-            {meetingId && (
+            {roomName && (
               <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
-                {meetingId}
+                {roomName}
               </span>
             )}
           </div>
@@ -184,9 +153,9 @@ const VideoCallModal = ({
 
         {/* Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {!token || !meetingId ? (
+          {!token || !serverUrl ? (
             <div className="flex flex-col items-center justify-center h-full gap-6">
-              <div className="w-24 h-24 rounded-full bg-gradient-eternia flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-gradient-eternia flex items-center justify-center shadow-lg">
                 {isAudioOnly ? (
                   <Phone className="w-12 h-12 text-primary-foreground" />
                 ) : (
@@ -198,13 +167,15 @@ const VideoCallModal = ({
                   {isLoading ? "Connecting..." : "Ready to connect?"}
                 </h3>
                 <p className="text-muted-foreground text-sm">
-                  {isLoading ? "Setting up secure session" : `Start a secure, anonymous ${isAudioOnly ? "audio" : "video"} session`}
+                  {isLoading
+                    ? "Setting up secure, authorized session"
+                    : `Start a secure ${isAudioOnly ? "audio" : "video"} session`}
                 </p>
               </div>
               <Button
                 onClick={startCall}
                 disabled={isLoading}
-                className="btn-primary text-lg px-8 py-4"
+                className="btn-primary text-lg px-8 py-4 rounded-xl shadow-md"
               >
                 {isLoading ? (
                   <>
@@ -217,35 +188,31 @@ const VideoCallModal = ({
               </Button>
             </div>
           ) : (
-            <MeetingProvider
-              config={{
-                meetingId,
-                micEnabled: true,
-                webcamEnabled: !isAudioOnly,
-                name: participantName,
-                participantId,
-                debugMode: false,
-              }}
+            <LiveKitRoom
               token={token}
-              joinWithoutUserInteraction={false}
+              serverUrl={serverUrl}
+              connect={true}
+              audio={true}
+              video={!isAudioOnly}
+              className="h-full w-full flex flex-col"
+              onDisconnected={handleLeave}
             >
-              <MeetingView
-                meetingId={meetingId}
+              <LiveKitMeetingView
+                meetingId={roomName || ""}
                 onMeetingLeave={handleLeave}
                 audioOnly={isAudioOnly}
-                sessionId={sessionId}
+                sessionId={sessionId || appointmentId}
                 sessionType={sessionType}
                 enableMonitoring={enableMonitoring}
                 onRiskDetected={onRiskDetected}
                 isTherapistView={isTherapistView}
                 onCaptureSnippetReady={onCaptureSnippetReady}
                 onLeaveReady={onLeaveReady}
-                autoJoin={true}
                 onJoined={onCallJoined}
                 onEscalate={onEscalate}
                 onAudioLevelChange={onAudioLevelChange}
               />
-            </MeetingProvider>
+            </LiveKitRoom>
           )}
         </div>
       </div>
@@ -253,4 +220,4 @@ const VideoCallModal = ({
   );
 };
 
-export default VideoCallModal;
+export default LiveKitCallModal;

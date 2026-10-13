@@ -136,65 +136,26 @@ export function useAppointments() {
     mutationFn: async (appointmentId: string) => {
       if (!user) throw new Error("Not authenticated");
 
-      // Fetch appointment to check credits and status
-      const { data: appt, error: fetchErr } = await supabase
-        .from("appointments")
-        .select("id, slot_id, credits_charged, status")
-        .eq("id", appointmentId)
-        .eq("student_id", user.id)
-        .single();
-      if (fetchErr) throw fetchErr;
+      const { data, error } = await supabase.rpc("cancel_appointment_with_refund", {
+        _appointment_id: appointmentId,
+      });
 
-      const { error } = await supabase
-        .from("appointments")
-        .update({ status: "cancelled" })
-        .eq("id", appointmentId)
-        .eq("student_id", user.id);
       if (error) throw error;
-
-      // Free the slot in expert_availability so it can be re-booked or deleted
-      if (appt?.slot_id) {
-        await supabase
-          .from("expert_availability")
-          .update({ is_booked: false })
-          .eq("id", appt.slot_id);
+      const res = data?.[0];
+      if (!res?.success) {
+        throw new Error(res?.message || "Failed to cancel appointment");
       }
-
-      // Refund only if ECC was actually deducted (check for spend transaction)
-      if (appt.credits_charged > 0 && (appt.status === "pending" || appt.status === "confirmed")) {
-        const { data: spendTx } = await supabase
-          .from("credit_transactions")
-          .select("id, delta")
-          .eq("reference_id", appointmentId)
-          .eq("type", "spend")
-          .maybeSingle();
-
-        if (spendTx) {
-          const refundAmount = Math.abs(spendTx.delta);
-          const { data: existingRefund } = await supabase
-            .from("credit_transactions")
-            .select("id")
-            .eq("reference_id", appointmentId)
-            .eq("type", "grant")
-            .maybeSingle();
-
-          if (!existingRefund) {
-            await supabase.from("credit_transactions").insert({
-              user_id: user.id,
-              delta: refundAmount,
-              type: "grant",
-              notes: "Expert Connect cancelled — refund",
-              reference_id: appointmentId,
-            });
-          }
-        }
-      }
+      return res;
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       refreshCredits();
-      toast.success("Appointment cancelled — credits refunded");
+      if (res && res.refund_amount > 0) {
+        toast.success(`Appointment cancelled — ${res.refund_amount} ECC refunded`);
+      } else {
+        toast.success("Appointment cancelled");
+      }
     },
     onError: (error) => {
       toast.error(error.message);

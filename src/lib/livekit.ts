@@ -1,7 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
-type VideoSDKAction = "get-token" | "create-room";
+export type MediaSessionKind = "appointment" | "peer" | "blackbox" | "l3";
+
+export interface LiveKitTokenRequest {
+  kind: MediaSessionKind;
+  id: string;
+}
+
+export interface LiveKitTokenResponse {
+  token: string;
+  url: string;
+  roomName: string;
+  participantIdentity: string;
+}
 
 interface ParsedFunctionError {
   message: string;
@@ -13,7 +25,7 @@ const isAuthErrorMessage = (message: string) =>
 
 const parseInvokeError = async (error: unknown): Promise<ParsedFunctionError> => {
   if (error instanceof FunctionsHttpError) {
-    let details = "Video service request failed";
+    let details = "LiveKit service request failed";
     let code: string | undefined;
     const status = error.context?.status;
 
@@ -23,51 +35,47 @@ const parseInvokeError = async (error: unknown): Promise<ParsedFunctionError> =>
       details = json.details || json.message || json.error || details;
       code = json.error;
     } catch {
-      // Response body may already be consumed by the SDK
       if (error.message) details = error.message;
     }
 
     return {
       message: details,
-      retryableAuth: status === 401 || code === "SESSION_INVALID" || isAuthErrorMessage(details),
+      retryableAuth: status === 401 || code === "UNAUTHORIZED" || isAuthErrorMessage(details),
     };
   }
 
   const message = error instanceof Error ? error.message : String(error);
   return {
-    message: message || "Video service request failed",
+    message: message || "Media service request failed",
     retryableAuth: isAuthErrorMessage(message),
   };
 };
 
 /**
- * Invoke the videosdk-token edge function.
- * Auth is handled automatically by supabase.functions.invoke() — no custom headers needed.
+ * Invoke the livekit-token edge function with authorized kind and record ID.
+ * Returns connection credentials scoped strictly to that session.
  */
-async function invokeVideoSDK(action: VideoSDKAction): Promise<Record<string, any>> {
-  // Pre-check: ensure we have a valid session before calling
+export async function getLiveKitToken(request: LiveKitTokenRequest): Promise<LiveKitTokenResponse> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     const { error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError) throw new Error("Session expired. Please sign in again.");
   }
 
-  const callFn = async () => {
-    const { data, error } = await supabase.functions.invoke("videosdk-token", {
-      body: { action },
+  const callFn = async (): Promise<LiveKitTokenResponse> => {
+    const { data, error } = await supabase.functions.invoke("livekit-token", {
+      body: { kind: request.kind, id: request.id },
     });
 
     if (error) throw error;
-    if (!data) throw new Error("Empty response from video service");
+    if (!data) throw new Error("Empty response from media service");
 
-    if (typeof data === "string") {
-      try {
-        return JSON.parse(data);
-      } catch {
-        throw new Error("Invalid response from video service");
-      }
+    const payload = typeof data === "string" ? JSON.parse(data) : data;
+    if (!payload.token || !payload.roomName) {
+      throw new Error(payload.details || payload.error || "Invalid response from media service");
     }
-    return data as Record<string, any>;
+
+    return payload as LiveKitTokenResponse;
   };
 
   try {
@@ -76,7 +84,6 @@ async function invokeVideoSDK(action: VideoSDKAction): Promise<Record<string, an
     const parsed = await parseInvokeError(err);
 
     if (parsed.retryableAuth) {
-      // One retry after refreshing the session
       const { error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError) throw new Error("Session expired. Please sign in again.");
 
@@ -88,17 +95,7 @@ async function invokeVideoSDK(action: VideoSDKAction): Promise<Record<string, an
       }
     }
 
-    console.error("[VideoSDK] Error:", err, "Parsed:", parsed.message);
+    console.error("[LiveKit] Token Error:", err, "Parsed:", parsed.message);
     throw new Error(parsed.message);
   }
 }
-
-export const getVideoSDKToken = async (): Promise<string> => {
-  const data = await invokeVideoSDK("get-token");
-  return data.token;
-};
-
-export const createVideoSDKRoom = async (): Promise<{ token: string; roomId: string }> => {
-  const data = await invokeVideoSDK("create-room");
-  return { token: data.token, roomId: data.roomId };
-};

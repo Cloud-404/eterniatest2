@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { spendCredits } from "./useSpendCredits";
-import { createVideoSDKRoom } from "@/lib/videosdk";
 
 export interface Intern {
   id: string;
@@ -632,31 +631,19 @@ export function usePeerConnect(initialSessionId?: string | null) {
       const session = sessions.find((s) => s.id === sessionId);
       if (!session || session.status !== "active") throw new Error("Session is not active");
 
-      // If room already exists, return it
-      if (session.room_id) return { roomId: session.room_id };
-
-      const { roomId } = await createVideoSDKRoom();
+      // Canonical room name for LiveKit
+      const canonicalRoomId = `peer_${sessionId}`;
 
       // Idempotent: only set room_id if still null
       const { data: updated } = await supabase
         .from("peer_sessions")
-        .update({ room_id: roomId })
+        .update({ room_id: canonicalRoomId })
         .eq("id", sessionId)
         .is("room_id", null)
         .select("room_id")
         .maybeSingle();
 
-      // If another call already set room_id, use theirs
-      if (!updated) {
-        const { data: reread } = await supabase
-          .from("peer_sessions")
-          .select("room_id")
-          .eq("id", sessionId)
-          .single();
-        if (reread?.room_id) return { roomId: reread.room_id };
-      }
-
-      const finalRoomId = updated?.room_id || roomId;
+      const finalRoomId = updated?.room_id || session.room_id || canonicalRoomId;
 
       // Insert system chat message so both sides see the call indication
       await supabase.from("peer_messages").insert({

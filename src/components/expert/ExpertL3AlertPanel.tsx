@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import VideoCallModal from "@/components/videosdk/VideoCallModal";
+import { LiveKitCallModal } from "@/components/livekit/LiveKitCallModal";
 
 
 interface L3Session {
@@ -115,36 +115,16 @@ const ExpertL3AlertPanel = () => {
     if (!user) return;
     setJoining(session.id);
     try {
-      const roomId = session.room_id;
-      if (!roomId) {
-        toast.error("No room available for this session");
-        setJoining(null);
-        return;
-      }
-
-      // Open call modal first, claim happens after join succeeds
-      setActiveSession(session);
-      setCallModal({ open: true });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to join session");
-    }
-    setJoining(null);
-  };
-
-  // Called after the expert's call successfully joins
-  const handleCallJoined = useCallback(async () => {
-    if (!user || !activeSession) return;
-    try {
-      // Atomic claim via backend
+      // Atomic claim via backend first to prevent concurrent join races
       const { data, error } = await supabase.functions.invoke("claim-l3-session", {
-        body: { session_id: activeSession.id },
+        body: { session_id: session.id },
       });
 
       if (error) {
         const msg = error.message || "Claim failed";
         if (msg.includes("already claimed")) {
-          toast.error("Session already claimed by another expert. Leaving...");
-          setCallModal({ open: false });
+          toast.error("Session already claimed by another expert.");
+          setJoining(null);
           return;
         }
         throw new Error(msg);
@@ -152,19 +132,27 @@ const ExpertL3AlertPanel = () => {
 
       if (data?.error) {
         if (data.error.includes("already claimed")) {
-          toast.error("Session already claimed by another expert. Leaving...");
-          setCallModal({ open: false });
+          toast.error("Session already claimed by another expert.");
+          setJoining(null);
           return;
         }
         throw new Error(data.error);
       }
 
-      toast.success("Session claimed — you are now the lead expert");
+      toast.success("Session claimed — connecting as lead expert...");
+      setActiveSession(session);
+      setCallModal({ open: true });
     } catch (err: any) {
       toast.error(err.message || "Failed to claim session");
-      setCallModal({ open: false });
+    } finally {
+      setJoining(null);
     }
-  }, [user, activeSession]);
+  };
+
+  // Called after the expert's call successfully joins
+  const handleCallJoined = useCallback(async () => {
+    toast.success("Connected to crisis session");
+  }, []);
 
   const handleEmergencyEscalation = async () => {
     if (!user || !activeSession) return;
@@ -311,8 +299,8 @@ const ExpertL3AlertPanel = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Video Call Modal — with AI monitoring enabled, auto-start when room is ready */}
-      <VideoCallModal
+      {/* LiveKit Call Modal — with AI monitoring enabled, auto-start when room is ready */}
+      <LiveKitCallModal
         isOpen={callModal.open}
         onClose={() => {
           setCallModal({ open: false });
@@ -323,6 +311,7 @@ const ExpertL3AlertPanel = () => {
         existingRoomId={activeSession?.room_id || undefined}
         sessionId={activeSession?.id}
         sessionType="blackbox"
+        isL3={true}
         enableMonitoring={true}
         isTherapistView={true}
         onRiskDetected={handleRiskDetected}

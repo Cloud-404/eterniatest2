@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import EmojiPicker from "@/components/chat/EmojiPicker";
-import VideoCallModal from "@/components/videosdk/VideoCallModal";
+import { LiveKitCallModal } from "@/components/livekit/LiveKitCallModal";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { usePeerConnect } from "@/hooks/usePeerConnect";
@@ -756,7 +756,7 @@ const PeerConnect = () => {
 
         {/* Video/Audio Call Modal */}
         {callMode && activeSessionId && (
-          <VideoCallModal
+          <LiveKitCallModal
             isOpen={!!callMode}
             onClose={() => setCallMode(null)}
             participantName={profile?.username || "Anonymous"}

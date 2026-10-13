@@ -20,11 +20,13 @@ export const useSilenceDetection = ({
   const [silenceDurationSec, setSilenceDurationSec] = useState(0);
   const [hasWarned, setHasWarned] = useState(false);
   const lastActivityRef = useRef<number>(Date.now());
+  const hasEndedRef = useRef(false);
 
   const resetSilence = useCallback(() => {
     lastActivityRef.current = Date.now();
     setSilenceDurationSec(0);
     setHasWarned(false);
+    hasEndedRef.current = false;
   }, []);
 
   // Update last activity when audioLevel is above threshold (representing active voice)
@@ -49,7 +51,8 @@ export const useSilenceDetection = ({
         onWarning?.();
       }
 
-      if (elapsed >= autoEndThresholdSec) {
+      if (elapsed >= autoEndThresholdSec && !hasEndedRef.current) {
+        hasEndedRef.current = true;
         onAutoEnd?.();
       }
     }, 1000);

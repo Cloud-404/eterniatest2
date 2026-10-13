@@ -1,4 +1,4 @@
-import { useMeeting } from "@videosdk.live/react-sdk";
+import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
 import {
   Mic,
   MicOff,
@@ -23,8 +23,9 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { useCallback } from "react";
 
-interface MeetingControlsProps {
+interface LiveKitControlsProps {
   audioOnly?: boolean;
   onEscalate?: () => void;
   onSwitchCamera?: () => void;
@@ -33,9 +34,10 @@ interface MeetingControlsProps {
   onSpeakerChange?: (deviceId: string) => void;
   volumeBoost?: number;
   onVolumeBoostChange?: (boost: number) => void;
+  onLeave?: () => void;
 }
 
-const MeetingControls = ({
+export const LiveKitControls = ({
   audioOnly = false,
   onEscalate,
   onSwitchCamera,
@@ -44,8 +46,36 @@ const MeetingControls = ({
   onSpeakerChange,
   volumeBoost = 1.0,
   onVolumeBoostChange,
-}: MeetingControlsProps) => {
-  const { leave, toggleMic, toggleWebcam, localMicOn, localWebcamOn } = useMeeting();
+  onLeave,
+}: LiveKitControlsProps) => {
+  const room = useRoomContext();
+  const { localParticipant, isMicrophoneEnabled, isCameraEnabled } = useLocalParticipant();
+
+  const toggleMic = useCallback(async () => {
+    try {
+      await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    } catch (err) {
+      console.error("[LiveKitControls] Failed to toggle mic:", err);
+    }
+  }, [localParticipant, isMicrophoneEnabled]);
+
+  const toggleWebcam = useCallback(async () => {
+    if (audioOnly) return;
+    try {
+      await localParticipant.setCameraEnabled(!isCameraEnabled);
+    } catch (err) {
+      console.error("[LiveKitControls] Failed to toggle camera:", err);
+    }
+  }, [localParticipant, isCameraEnabled, audioOnly]);
+
+  const handleLeave = useCallback(() => {
+    try {
+      room.disconnect();
+    } catch (err) {
+      console.warn("[LiveKitControls] Disconnect error:", err);
+    }
+    onLeave?.();
+  }, [room, onLeave]);
 
   const getDeviceIcon = (label: string) => {
     const lowercase = label.toLowerCase();
@@ -63,27 +93,31 @@ const MeetingControls = ({
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-3 p-4 bg-card border-t border-border shrink-0">
+      {/* Microphone button */}
       <Button
-        variant={localMicOn ? "outline" : "destructive"}
+        variant={isMicrophoneEnabled ? "outline" : "destructive"}
         size="icon"
         className="rounded-full w-12 h-12"
-        onClick={() => toggleMic()}
+        onClick={toggleMic}
+        title={isMicrophoneEnabled ? "Mute Microphone" : "Unmute Microphone"}
       >
-        {localMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+        {isMicrophoneEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
       </Button>
 
+      {/* Camera button (when video supported) */}
       {!audioOnly && (
         <>
           <Button
-            variant={localWebcamOn ? "outline" : "destructive"}
+            variant={isCameraEnabled ? "outline" : "destructive"}
             size="icon"
             className="rounded-full w-12 h-12"
-            onClick={() => toggleWebcam()}
+            onClick={toggleWebcam}
+            title={isCameraEnabled ? "Disable Camera" : "Enable Camera"}
           >
-            {localWebcamOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+            {isCameraEnabled ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
           </Button>
 
-          {localWebcamOn && onSwitchCamera && (
+          {isCameraEnabled && onSwitchCamera && (
             <Button
               variant="outline"
               size="icon"
@@ -118,7 +152,7 @@ const MeetingControls = ({
           <DropdownMenuLabel className="text-xs text-muted-foreground font-display font-semibold">
             Audio Output
           </DropdownMenuLabel>
-          
+
           {supportsSinkId && audioOutputs.length > 0 ? (
             audioOutputs.map((device) => (
               <DropdownMenuItem
@@ -158,23 +192,26 @@ const MeetingControls = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Escalation Button */}
       {onEscalate && (
         <Button
           variant="outline"
           size="icon"
           className="rounded-full w-12 h-12 border-destructive/50 text-destructive hover:bg-destructive/10"
           onClick={onEscalate}
-          title="Escalate to SPOC"
+          title="Escalate Session"
         >
           <AlertTriangle className="w-5 h-5" />
         </Button>
       )}
 
+      {/* Leave Button */}
       <Button
         variant="destructive"
         size="icon"
         className="rounded-full w-14 h-14"
-        onClick={() => leave()}
+        onClick={handleLeave}
+        title="Leave Call"
       >
         <PhoneOff className="w-6 h-6" />
       </Button>
@@ -182,4 +219,4 @@ const MeetingControls = ({
   );
 };
 
-export default MeetingControls;
+export default LiveKitControls;

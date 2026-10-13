@@ -64,39 +64,18 @@ export function useQuests() {
     mutationFn: async ({ quest, answer }: { quest: QuestCard; answer: string }) => {
       if (!user) throw new Error("Not authenticated");
 
-      const alreadyCompleted = completions.some(c => c.quest_id === quest.id);
-      if (alreadyCompleted) {
-        throw new Error("Quest already completed today");
+      const { data, error } = await supabase.rpc("earn_quest_reward", {
+        _quest_id: quest.id,
+        _answer: answer || null,
+      });
+
+      if (error) throw error;
+      const res = data?.[0];
+      if (!res || !res.success) {
+        throw new Error(res?.message || "Quest already completed or could not be completed");
       }
 
-      const actualReward = Math.min(2, remainingThisWeek);
-      if (!canEarn || actualReward <= 0) {
-        const { error: completionError } = await supabase.from("quest_completions").insert({
-          user_id: user.id,
-          quest_id: quest.id,
-          answer,
-        });
-        if (completionError) throw completionError;
-        return { ...quest, xp_reward: 0 };
-      }
-
-      const { error: completionError } = await supabase.from("quest_completions").insert({
-        user_id: user.id,
-        quest_id: quest.id,
-        answer,
-      });
-      if (completionError) throw completionError;
-
-      const { error: creditError } = await supabase.from("credit_transactions").insert({
-        user_id: user.id,
-        delta: actualReward,
-        type: "earn",
-        notes: `Quest completed: ${quest.title}`,
-        reference_id: quest.id,
-      });
-      if (creditError) throw creditError;
-
-      return { ...quest, xp_reward: actualReward };
+      return { ...quest, xp_reward: res.reward };
     },
     onSuccess: (quest) => {
       queryClient.invalidateQueries({ queryKey: ["quest-completions"] });

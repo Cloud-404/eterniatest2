@@ -4,7 +4,7 @@ import { Calendar, Clock, User, Video, Phone, CheckCircle, Coins, X, Loader2, Ro
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import VideoCallModal from "@/components/videosdk/VideoCallModal";
+import LiveKitCallModal from "@/components/livekit/LiveKitCallModal";
 import MobileExpertDashboard from "@/components/mobile/MobileExpertDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppointments } from "@/hooks/useAppointments";
@@ -192,7 +192,7 @@ const MobileAppointments = () => {
         </DialogContent>
       </Dialog>
 
-      <VideoCallModal isOpen={callModal.open} onClose={() => setCallModal({ open: false, mode: "video" })} participantName={profile?.username || "Student"} mode={callModal.mode} appointmentId={callModal.appointmentId} />
+      <LiveKitCallModal isOpen={callModal.open} onClose={() => setCallModal({ open: false, mode: "video" })} participantName={profile?.username || "Student"} mode={callModal.mode} appointmentId={callModal.appointmentId} />
     </DashboardLayout>
   );
 };

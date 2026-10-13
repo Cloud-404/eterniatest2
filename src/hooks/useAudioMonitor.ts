@@ -49,7 +49,9 @@ export function useAudioMonitor({
   const bufferRef = useRef<{ text: string; timestamp: number }[]>([]);
   const recognitionRef = useRef<any>(null);
   const classifyTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const restartTimerRef = useRef<NodeJS.Timeout | null>(null);
   const enabledRef = useRef(enabled);
+  const isDisposedRef = useRef(false);
   const classifyInFlightRef = useRef(false);
 
   // Keep refs in sync for latest values used in callbacks
@@ -174,19 +176,24 @@ export function useAudioMonitor({
 
     recognition.onerror = (event: any) => {
       console.error("[AudioMonitor] Speech recognition error:", event.error);
+      if (isDisposedRef.current || !enabledRef.current) return;
       if (event.error === "no-speech" || event.error === "aborted") {
-        if (enabledRef.current) {
-          setTimeout(() => {
+        if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = setTimeout(() => {
+          if (!isDisposedRef.current && enabledRef.current) {
             try { recognition.start(); } catch {}
-          }, 1000);
-        }
+          }
+        }, 1000);
       }
     };
 
     recognition.onend = () => {
-      if (enabledRef.current) {
-        setTimeout(() => {
-          try { recognition.start(); } catch {}
+      if (!isDisposedRef.current && enabledRef.current) {
+        if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = setTimeout(() => {
+          if (!isDisposedRef.current && enabledRef.current) {
+            try { recognition.start(); } catch {}
+          }
         }, 500);
       } else {
         setState((prev) => ({ ...prev, isListening: false }));
@@ -203,6 +210,10 @@ export function useAudioMonitor({
   }, [trimBuffer]);
 
   const stopListening = useCallback(() => {
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
       recognitionRef.current = null;
@@ -211,6 +222,7 @@ export function useAudioMonitor({
   }, []);
 
   useEffect(() => {
+    isDisposedRef.current = false;
     if (enabled) {
       startListening();
       classifyTimerRef.current = setInterval(classifyBuffer, classifyIntervalMs);
@@ -223,6 +235,8 @@ export function useAudioMonitor({
     }
 
     return () => {
+      isDisposedRef.current = true;
+      enabledRef.current = false;
       stopListening();
       if (classifyTimerRef.current) {
         clearInterval(classifyTimerRef.current);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getVideoSDKToken } from "@/lib/videosdk";
+import { getLiveKitToken } from "@/lib/livekit";
 import { toast } from "sonner";
 import { spendCredits } from "./useSpendCredits";
 
@@ -34,6 +34,7 @@ export const useBlackBoxSession = () => {
   const [activeSession, setActiveSession] = useState<BlackBoxSession | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [liveKitUrl, setLiveKitUrl] = useState<string | null>(null);
   const [callState, setCallState] = useState<CallState>("idle");
   const tokenRef = useRef<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -46,6 +47,7 @@ export const useBlackBoxSession = () => {
     sessionIdRef.current = activeSession?.id || null;
     if (prevId && prevId !== activeSession?.id) {
       setToken(null);
+      setLiveKitUrl(null);
       tokenRef.current = null;
       setCallState("idle");
     }
@@ -60,6 +62,7 @@ export const useBlackBoxSession = () => {
     if (["completed", "cancelled"].includes(status)) {
       setCallState("idle");
       setToken(null);
+      setLiveKitUrl(null);
       tokenRef.current = null;
       return;
     }
@@ -74,14 +77,15 @@ export const useBlackBoxSession = () => {
 
   // Fetch token for the current session
   const fetchToken = useCallback(async () => {
-    if (!activeSession?.room_id) return;
+    if (!activeSession?.id) return;
     setCallState("joining");
     const MAX_RETRIES = 3;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        console.log(`[BlackBox] Fetching token attempt ${attempt}/${MAX_RETRIES}`);
-        const t = await getVideoSDKToken();
-        setToken(t);
+        console.log(`[BlackBox] Fetching LiveKit token attempt ${attempt}/${MAX_RETRIES}`);
+        const res = await getLiveKitToken({ kind: "blackbox", id: activeSession.id });
+        setToken(res.token);
+        setLiveKitUrl(res.url);
         return;
       } catch (error: any) {
         console.error(`[BlackBox] Token fetch attempt ${attempt} failed:`, error);
@@ -99,7 +103,7 @@ export const useBlackBoxSession = () => {
         }
       }
     }
-  }, [activeSession?.id, activeSession?.room_id]);
+  }, [activeSession?.id]);
 
   const onCallJoined = useCallback(async () => {
     setCallState("joined");
@@ -277,50 +281,28 @@ export const useBlackBoxSession = () => {
 
   const cancelSession = useCallback(async () => {
     if (!activeSession || !user) return;
-    // Only refund if student never joined (student_joined_at is null)
-    const neverJoined = !activeSession.student_joined_at;
-
-    await supabase
-      .from("blackbox_sessions")
-      .update({ status: "cancelled", ended_at: new Date().toISOString() })
-      .eq("id", activeSession.id);
-
-    if (neverJoined) {
-      // Look up any spend transaction to refund
-      const { data: spendTx } = await supabase
-        .from("credit_transactions")
-        .select("id, delta")
-        .eq("reference_id", activeSession.id)
-        .eq("type", "spend")
-        .maybeSingle();
-
-      const refundAmount = spendTx ? Math.abs(spendTx.delta) : 0;
-
-      if (refundAmount > 0) {
-        const { data: existingRefund } = await supabase
-          .from("credit_transactions")
-          .select("id")
-          .eq("reference_id", activeSession.id)
-          .eq("type", "grant")
-          .maybeSingle();
-
-        if (!existingRefund) {
-          await supabase.from("credit_transactions").insert({
-            user_id: user.id,
-            delta: refundAmount,
-            type: "grant",
-            notes: "BlackBox session cancelled — refund",
-            reference_id: activeSession.id,
-          });
-        }
+    try {
+      const { data, error } = await supabase.rpc("cancel_blackbox_with_refund", {
+        _session_id: activeSession.id,
+      });
+      if (error) throw error;
+      const res = data?.[0];
+      if (res && !res.success) {
+        toast.error(res.message);
+      } else if (res && res.refund_amount > 0) {
+        toast.info(`Session cancelled — ${res.refund_amount} ECC refunded`);
+      } else {
+        toast.info("Session cancelled");
       }
       refreshCredits();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel session");
+    } finally {
+      setActiveSession(null);
+      setToken(null);
+      setLiveKitUrl(null);
+      setCallState("idle");
     }
-
-    setActiveSession(null);
-    setToken(null);
-    setCallState("idle");
-    toast.info(neverJoined ? "Session cancelled" : "Session cancelled — no refund (already joined)");
   }, [activeSession, user, refreshCredits]);
 
   const endSession = useCallback(async () => {
@@ -331,11 +313,13 @@ export const useBlackBoxSession = () => {
       .eq("id", activeSession.id);
     setActiveSession(null);
     setToken(null);
+    setLiveKitUrl(null);
     setCallState("idle");
   }, [activeSession]);
 
   const retryConnection = useCallback(async () => {
     setToken(null);
+    setLiveKitUrl(null);
     tokenRef.current = null;
     await fetchToken();
   }, [fetchToken]);
@@ -345,6 +329,7 @@ export const useBlackBoxSession = () => {
     isRequesting,
     callState,
     token,
+    liveKitUrl,
     requestSession,
     cancelSession,
     endSession,

@@ -12,6 +12,8 @@ export interface CreditTransaction {
   created_at: string;
 }
 
+import { spendCredits as invokeSpendCredits } from "./useSpendCredits";
+
 export function useCredits() {
   const { user, creditBalance, refreshCredits } = useAuth();
   const queryClient = useQueryClient();
@@ -38,16 +40,10 @@ export function useCredits() {
   const spendCredits = useMutation({
     mutationFn: async ({ amount, notes }: { amount: number; notes: string }) => {
       if (!user) throw new Error("Not authenticated");
-      if (creditBalance < amount) throw new Error("Insufficient credits");
-
-      const { error } = await supabase.from("credit_transactions").insert({
-        user_id: user.id,
-        delta: -amount,
-        type: "spend",
-        notes,
-      });
-
-      if (error) throw error;
+      const result = await invokeSpendCredits(amount, notes);
+      if (!result.success) {
+        throw new Error(result.error || "Insufficient credits");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
@@ -62,14 +58,17 @@ export function useCredits() {
     mutationFn: async ({ amount, notes }: { amount: number; notes: string }) => {
       if (!user) throw new Error("Not authenticated");
 
-      const { error } = await supabase.from("credit_transactions").insert({
-        user_id: user.id,
-        delta: amount,
-        type: "earn",
-        notes,
+      const { data, error } = await supabase.rpc("earn_credits_activity", {
+        _amount: Math.min(Math.max(1, Math.round(amount)), 5),
+        _activity: notes,
       });
 
       if (error) throw error;
+      const res = data?.[0];
+      if (!res || !res.success) {
+        throw new Error(res?.message || "Failed to earn credits");
+      }
+      return res.earned;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });

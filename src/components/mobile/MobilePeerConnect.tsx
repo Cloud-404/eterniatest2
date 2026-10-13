@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import EmojiPicker from "@/components/chat/EmojiPicker";
-import VideoCallModal from "@/components/videosdk/VideoCallModal";
+import { LiveKitCallModal } from "@/components/livekit/LiveKitCallModal";
 import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -505,7 +505,7 @@ const MobilePeerConnect = () => {
 
         {/* Video/Audio Call Modal */}
         {callMode && activeSessionId && (
-          <VideoCallModal
+          <LiveKitCallModal
             isOpen={!!callMode}
             onClose={() => setCallMode(null)}
             participantName={profile?.username || "Anonymous"}

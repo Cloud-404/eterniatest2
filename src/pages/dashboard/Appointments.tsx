@@ -13,7 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import VideoCallModal from "@/components/videosdk/VideoCallModal";
+import LiveKitCallModal from "@/components/livekit/LiveKitCallModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useCredits } from "@/hooks/useCredits";
@@ -179,7 +179,7 @@ const Appointments = () => {
         </DialogContent>
       </Dialog>
 
-      <VideoCallModal isOpen={callModal.open} onClose={() => setCallModal({ open: false, mode: "video" })} participantName={profile?.username || "Student"} participantId={profile?.id || user?.id} mode={callModal.mode} appointmentId={callModal.appointmentId} />
+      <LiveKitCallModal isOpen={callModal.open} onClose={() => setCallModal({ open: false, mode: "video" })} participantName={profile?.username || "Student"} participantId={profile?.id || user?.id} mode={callModal.mode} appointmentId={callModal.appointmentId} />
     </DashboardLayout>
   );
 };

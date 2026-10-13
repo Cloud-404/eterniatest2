@@ -376,25 +376,25 @@ const SPOCDashboardContent = () => {
     try {
       const amount = parseInt(grantAmount);
       if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
-      // Insert credit_transactions for all students
-      const inserts = students.map((s) => ({
-        user_id: s.id,
-        delta: amount,
-        type: "grant" as const,
-        notes: `SPOC bulk grant`,
-        institution_id: institutionId,
-      }));
-      // Batch insert (max 100 at a time)
-      for (let i = 0; i < inserts.length; i += 100) {
-        const batch = inserts.slice(i, i + 100);
-        const { error } = await supabase.from("credit_transactions").insert(batch);
-        if (error) throw error;
-      }
-      toast.success(`Granted ${amount} ECC to ${students.length} students`);
+
+      const { data, error } = await supabase.functions.invoke("grant-credits", {
+        body: {
+          bulk: true,
+          institution_id: institutionId,
+          amount,
+          notes: "SPOC bulk grant",
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(`Granted ${amount} ECC to students`);
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to grant credits");
+    } finally {
+      setIsGranting(false);
     }
-    setIsGranting(false);
   };
 
 

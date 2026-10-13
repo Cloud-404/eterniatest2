@@ -93,11 +93,11 @@ Deno.serve(async (req) => {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // Verify caller is the assigned expert or an admin
       if (appt.expert_id !== callerId) {
-        // Check if caller has expert role as fallback
-        const { data: roleCheck } = await admin.from("user_roles").select("id").eq("user_id", callerId).eq("role", "expert").limit(1);
-        if (!roleCheck || roleCheck.length === 0) {
-          return new Response(JSON.stringify({ error: "Not authorized" }), {
+        const { data: adminCheck } = await admin.from("user_roles").select("id").eq("user_id", callerId).eq("role", "admin").limit(1);
+        if (!adminCheck || adminCheck.length === 0) {
+          return new Response(JSON.stringify({ error: "Only the assigned expert or an administrator can escalate this appointment" }), {
             status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
@@ -117,11 +117,11 @@ Deno.serve(async (req) => {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // Verify caller is the assigned intern or an admin
       if (peerSess.intern_id !== callerId) {
-        // Check if caller has intern role
-        const { data: roleCheck } = await admin.from("user_roles").select("id").eq("user_id", callerId).eq("role", "intern").limit(1);
-        if (!roleCheck || roleCheck.length === 0) {
-          return new Response(JSON.stringify({ error: "Not authorized" }), {
+        const { data: adminCheck } = await admin.from("user_roles").select("id").eq("user_id", callerId).eq("role", "admin").limit(1);
+        if (!adminCheck || adminCheck.length === 0) {
+          return new Response(JSON.stringify({ error: "Only the assigned peer supporter or an administrator can escalate this session" }), {
             status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }

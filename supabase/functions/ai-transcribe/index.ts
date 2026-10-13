@@ -76,6 +76,79 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Server-side session participant authorization check
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    if (sType === "peer") {
+      const { data: pSession } = await adminClient
+        .from("peer_sessions")
+        .select("id, student_id, intern_id, status")
+        .eq("id", session_id)
+        .single();
+
+      if (!pSession) {
+        return new Response(JSON.stringify({ error: "Peer session not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (pSession.student_id !== user.id && pSession.intern_id !== user.id) {
+        return new Response(JSON.stringify({ error: "Not authorized for this session" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (pSession.status !== "active") {
+        return new Response(JSON.stringify({ error: "Peer session is not active" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      const { data: bbSession } = await adminClient
+        .from("blackbox_sessions")
+        .select("id, student_id, therapist_id, status")
+        .eq("id", session_id)
+        .single();
+
+      if (!bbSession) {
+        return new Response(JSON.stringify({ error: "BlackBox session not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const isStudent = bbSession.student_id === user.id;
+      const isTherapist = bbSession.therapist_id === user.id;
+
+      if (!isStudent && !isTherapist) {
+        const { data: expertCheck } = await adminClient
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("role", "expert")
+          .limit(1);
+
+        if (!expertCheck || expertCheck.length === 0) {
+          return new Response(JSON.stringify({ error: "Not authorized for this session" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      if (["completed", "cancelled"].includes(bbSession.status)) {
+        return new Response(JSON.stringify({ error: "Session is completed or cancelled" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const lowerTranscript = transcript.toLowerCase();
     const detectedKeywords = SENSITIVE_KEYWORDS.filter((kw) => lowerTranscript.includes(kw));
     const hasKeywords = detectedKeywords.length > 0;
@@ -206,10 +279,6 @@ Your recommendation should be a single actionable sentence the therapist/expert/
     } else {
       trigger_snippet = transcript.substring(0, 400);
     }
-
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const nowISO = new Date().toISOString();
 
