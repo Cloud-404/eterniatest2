@@ -1,0 +1,274 @@
+PROPRIETARY SOFTWARE LICENSE AGREEMENT
+
+Copyright (c) 2024-2026 EliteForums India (eliteforums.in)
+All Rights Reserved.
+
+================================================================================
+
+1. DEFINITIONS
+
+"Software" refers to the Eternia platform, including all source code, object
+code, documentation, configuration files, database schemas, edge functions,
+design assets, and any associated materials contained in this repository.
+
+"Licensor" refers to EliteForums India (eliteforums.in), the sole owner and
+copyright holder of the Software.
+
+"Licensee" refers to any individual or entity that has been granted explicit
+written permission by the Licensor to access or use the Software.
+
+"Institution" refers to an educational institution that has entered into a
+valid subscription agreement with the Licensor for use of the Software.
+
+"End User" refers to students, counselors, therapists, and administrative
+personnel who access the Software through an Institution's subscription.
+
+================================================================================
+
+2. GRANT OF LICENSE
+
+Subject to the terms of this Agreement, the Licensor grants to authorized
+Licensees a limited, non-exclusive, non-transferable, revocable license to
+use the Software solely for its intended purpose of providing student
+wellbeing services within the scope of a valid subscription agreement.
+
+This license does NOT include:
+(a) The right to sublicense, sell, lease, or rent the Software
+(b) The right to distribute copies of the Software to third parties
+(c) The right to use the Software for purposes other than student wellbeing
+(d) The right to access or use the Software without a valid subscription
+
+================================================================================
+
+3. INTELLECTUAL PROPERTY
+
+The Software, including all intellectual property rights therein, is and shall
+remain the exclusive property of the Licensor. Nothing in this Agreement
+transfers any ownership rights to the Licensee.
+
+This includes but is not limited to:
+(a) All source code and compiled binaries
+(b) Database schemas, migrations, and stored procedures
+(c) Edge functions and serverless logic
+(d) User interface designs, layouts, and visual assets
+(e) Algorithms, including AI/ML models and safety detection logic
+(f) The "Eternia" name, logo, and branding elements
+(g) Documentation and technical specifications
+(h) The ECC (Eternia Care Credits) economic model and implementation
+
+================================================================================
+
+4. RESTRICTIONS
+
+The Licensee shall NOT:
+
+(a) Copy, reproduce, or duplicate the Software or any part thereof, except
+    as required for normal operation under a valid license
+
+(b) Modify, adapt, translate, or create derivative works based on the
+    Software without prior written consent from the Licensor
+
+(c) Reverse engineer, decompile, disassemble, or otherwise attempt to
+    derive the source code of the Software, except to the extent
+    permitted by applicable law that cannot be contractually waived
+
+(d) Remove, alter, or obscure any copyright notices, proprietary legends,
+    or identification marks in the Software
+
+(e) Use the Software to develop a competing product or service
+
+(f) Share access credentials, API keys, or security tokens with
+    unauthorized parties
+
+(g) Attempt to circumvent any security measures, rate limits, or access
+    controls implemented in the Software
+
+(h) Store, transmit, or process personal data through the Software in
+    violation of applicable data protection laws
+
+(i) Use the Software in any manner that could damage, disable, overburden,
+    or impair the Licensor's servers or infrastructure
+
+(j) Use any automated means (bots, scrapers, crawlers) to access the
+    Software except through approved API endpoints
+
+================================================================================
+
+5. CONFIDENTIALITY
+
+The Software contains trade secrets and confidential information of the
+Licensor. The Licensee agrees to:
+
+(a) Maintain the confidentiality of all non-public aspects of the Software
+
+(b) Not disclose any proprietary information, including but not limited to
+    source code, algorithms, database schemas, API keys, and internal
+    architecture details
+
+(c) Take reasonable measures to protect the Software from unauthorized
+    access, use, or disclosure
+
+(d) Promptly notify the Licensor of any unauthorized access or security
+    breach involving the Software
+
+(e) Return or destroy all copies of the Software upon termination of the
+    license agreement
+
+================================================================================
+
+6. DATA PROTECTION & PRIVACY
+
+The Software is designed in compliance with the Digital Personal Data
+Protection (DPDP) Act, 2023 of India. The following data principles are
+enforced at the architectural level:
+
+(a) DATA MINIMIZATION: The Software collects and processes only the minimum
+    data necessary for its intended purpose. No personally identifiable
+    information (PII) such as real names, email addresses, or phone numbers
+    is stored in the system.
+
+(b) PURPOSE LIMITATION: All data collected is used solely for the purpose
+    of providing student wellbeing services. Data is not used for marketing,
+    profiling, or any secondary purpose.
+
+(c) STORAGE LIMITATION: Student identification data (APAAR IDs, ERP IDs)
+    is processed transiently and stored only as one-way cryptographic hashes.
+    Raw identification data is never persisted.
+
+(d) CONSENT: The Software implements granular cookie consent mechanisms and
+    provides transparency about data processing practices.
+
+(e) RIGHT TO ERASURE: End Users may request account deletion through their
+    institutional coordinator (SPOC). The Software supports complete data
+    removal upon authorized request.
+
+(f) SECURITY: All sensitive data is encrypted at rest and in transit.
+    Row-Level Security (RLS) policies enforce data isolation between
+    institutions and users.
+
+The Licensor shall not be liable for data protection violations arising
+from the Licensee's failure to comply with applicable data protection laws
+in their jurisdiction.
+
+================================================================================
+
+7. AI & SAFETY SYSTEMS
+
+The Software includes AI-powered safety monitoring features. These systems:
+
+(a) Are designed to ASSIST human decision-making, not replace it
+
+(b) Generate suggestions and risk assessments that require human review
+    and approval before any action is taken
+
+(c) Do not store full audio recordings — only brief snippets (±10 seconds)
+    are captured when a human operator explicitly triggers an escalation
+
+(d) All AI-generated assessments and human responses are logged for
+    accountability and audit purposes
+
+The Licensor makes no warranty regarding the accuracy or completeness of
+AI-generated risk assessments. The Licensee acknowledges that final
+responsibility for clinical decisions rests with qualified human
+professionals.
+
+================================================================================
+
+8. WARRANTY DISCLAIMER
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+THE LICENSOR DOES NOT WARRANT THAT:
+(a) The Software will meet the Licensee's specific requirements
+(b) The Software will operate uninterrupted or error-free
+(c) Defects in the Software will be corrected
+(d) The AI safety systems will detect all potential risks
+
+================================================================================
+
+9. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
+SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO
+LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES,
+RESULTING FROM:
+
+(a) The use or inability to use the Software
+(b) Any unauthorized access to or alteration of data
+(c) Any AI-generated assessment or recommendation
+(d) Any interruption of service
+
+THE LICENSOR'S TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNT PAID BY THE
+LICENSEE FOR THE SOFTWARE IN THE TWELVE (12) MONTHS PRECEDING THE EVENT
+GIVING RISE TO LIABILITY.
+
+================================================================================
+
+10. TERMINATION
+
+This license is effective until terminated. The Licensor may terminate this
+license at any time if:
+
+(a) The Licensee breaches any term of this Agreement
+(b) The Licensee's subscription agreement expires or is cancelled
+(c) The Licensee becomes insolvent or ceases operations
+(d) Required by law or regulation
+
+Upon termination:
+(a) All rights granted under this license cease immediately
+(b) The Licensee must destroy all copies of the Software
+(c) The Licensee must cease all use of the Software
+(d) Sections 3, 5, 6, 8, 9, and 11 survive termination
+
+================================================================================
+
+11. GOVERNING LAW & JURISDICTION
+
+This Agreement shall be governed by and construed in accordance with the
+laws of India, without regard to its conflict of law provisions.
+
+Any disputes arising out of or in connection with this Agreement shall be
+subject to the exclusive jurisdiction of the courts in New Delhi, India.
+
+The parties agree to first attempt to resolve any dispute through good-faith
+negotiation for a period of thirty (30) days before initiating legal
+proceedings.
+
+================================================================================
+
+12. GENERAL PROVISIONS
+
+(a) ENTIRE AGREEMENT: This Agreement constitutes the entire agreement
+    between the parties regarding the Software and supersedes all prior
+    agreements and understandings.
+
+(b) SEVERABILITY: If any provision of this Agreement is found to be
+    unenforceable, the remaining provisions shall continue in full force
+    and effect.
+
+(c) WAIVER: The failure of the Licensor to enforce any right or provision
+    of this Agreement shall not constitute a waiver of such right or
+    provision.
+
+(d) ASSIGNMENT: The Licensee may not assign or transfer this Agreement
+    without the prior written consent of the Licensor.
+
+(e) AMENDMENTS: This Agreement may only be amended by a written instrument
+    signed by both parties.
+
+(f) NOTICES: All notices under this Agreement shall be in writing and
+    delivered to the addresses specified in the subscription agreement.
+
+================================================================================
+
+For licensing inquiries, contact:
+
+EliteForums India
+Website: https://eliteforums.in
+Subject: Eternia Platform Licensing
+
+================================================================================
+
+END OF LICENSE AGREEMENT

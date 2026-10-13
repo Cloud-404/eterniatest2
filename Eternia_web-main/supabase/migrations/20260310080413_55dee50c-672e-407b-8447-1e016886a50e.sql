@@ -1,0 +1,1 @@
+DELETE FROM public.sound_content;

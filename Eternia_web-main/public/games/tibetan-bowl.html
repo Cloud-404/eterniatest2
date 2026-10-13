@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#080506">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Tibetan Singing Bowl</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { height: 100%; }
+
+    body {
+      background: #080506;
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+
+    /* ── START SCREEN ── */
+    #start-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 60%, #1a0c04 0%, #080506 70%);
+      z-index: 30;
+      cursor: pointer;
+      pointer-events: all;
+      transition: opacity 0.9s ease;
+    }
+    #start-screen.hidden { opacity: 0; pointer-events: none; }
+
+    .om-glyph {
+      font-size: clamp(52px, 10vw, 96px);
+      color: rgba(220, 180, 80, 0.28);
+      margin-bottom: 20px;
+      letter-spacing: 0;
+      animation: breathe 4s ease-in-out infinite;
+      font-family: serif;
+    }
+    @keyframes breathe {
+      0%,100% { opacity:.22; transform:scale(1); }
+      50%      { opacity:.55; transform:scale(1.06); }
+    }
+
+    .start-title {
+      font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+      font-size: clamp(22px, 4.5vw, 44px);
+      font-weight: 400;
+      color: #dfc070;
+      letter-spacing: 0.18em;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .start-sub {
+      font-family: 'Palatino Linotype', Palatino, serif;
+      font-size: clamp(10px, 1.8vw, 13px);
+      color: rgba(220, 180, 80, 0.4);
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      margin-bottom: 52px;
+    }
+    .start-ring {
+      width: 1px; height: 38px;
+      background: linear-gradient(to bottom, rgba(220,180,80,0), rgba(220,180,80,0.35));
+      margin-bottom: 20px;
+    }
+    .start-btn {
+      font-family: 'Palatino Linotype', Palatino, serif;
+      font-size: 13px;
+      color: rgba(220, 180, 80, 0.7);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      border: 1px solid rgba(220, 180, 80, 0.25);
+      padding: 13px 38px;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.35s;
+      outline: none;
+    }
+    .start-btn:hover {
+      border-color: rgba(220, 180, 80, 0.6);
+      color: #dfc070;
+      background: rgba(220, 180, 80, 0.04);
+      letter-spacing: 0.38em;
+    }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed;
+      bottom: clamp(12px, 3vh, 24px);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #status-label {
+      font-family: 'Palatino Linotype', Palatino, serif;
+      font-size: clamp(10px, 1.7vw, 12px);
+      color: rgba(220, 180, 80, 0.38);
+      letter-spacing: 0.18em;
+      transition: color 0.4s;
+    }
+    #status-label.active { color: rgba(220, 180, 80, 0.7); }
+    #bar-track {
+      width: 110px; height: 1px;
+      background: rgba(220,180,80,0.1);
+      border-radius: 1px;
+      overflow: visible;
+      position: relative;
+    }
+    #bar-fill {
+      position: absolute;
+      top: 0; left: 0;
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #b07820, #f0d060, #fff8c0);
+      border-radius: 1px;
+      transition: width 0.08s linear;
+      box-shadow: 0 0 6px rgba(240,208,80,0.5);
+    }
+    #freq-label {
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      color: rgba(220, 180, 80, 0.2);
+      letter-spacing: 0.08em;
+    }
+
+    #corner-info {
+      position: fixed;
+      top: 12px; left: 14px;
+      pointer-events: none; z-index: 10;
+    }
+    #corner-info p {
+      font-family: 'Palatino Linotype', Palatino, serif;
+      font-size: clamp(8px, 1.5vw, 10px);
+      color: rgba(220,180,80,0.18);
+      letter-spacing: 0.12em;
+      line-height: 1.8;
+    }
+    @media (max-width: 480px) {
+      #corner-info { display: none; }
+      .start-sub { margin-bottom: 32px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ START SCREEN ═══════════ -->
+<div id="start-screen">
+  <div class="om-glyph">ॐ</div>
+  <h1 class="start-title">Tibetan Singing Bowl</h1>
+  <p class="start-sub">Interactive sound meditation</p>
+  <div class="start-ring"></div>
+  <button class="start-btn" id="start-btn">Touch to begin</button>
+</div>
+
+<!-- ═══════════ HUD ═══════════ -->
+<div id="hud">
+  <div id="status-label">Place cursor on the rim</div>
+  <div id="bar-track"><div id="bar-fill"></div></div>
+  <div id="freq-label">— Hz</div>
+</div>
+
+<div id="corner-info">
+  <p>Slow circles → gentle tone</p>
+  <p>Fast smooth circles → resonance</p>
+</div>
+
+<!-- Three.js r128 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════
+   CONFIG  — single source of truth for all tunable parameters
+══════════════════════════════════════════════════════════════════ */
+const CFG = {
+  // Geometry
+  RIM_RADIUS   : 2.0,
+  RIM_HEIGHT   : 0.38,   // world-Y of the rim contact surface
+  RIM_BAND     : 0.7,    // radial tolerance to count as "on rim"
+
+  // Audio synthesis
+  FREQ_BASE    : 220,    // Hz — A3, typical medium bowl fundamental
+  FREQ_HARMONY : 2.007,  // 2nd harmonic multiplier (slight detuning for beats)
+  FREQ_SHIMMER : 3.012,  // 3rd harmonic multiplier
+  REVERB_FB    : 0.62,   // delay feedback coefficient (0–<1)
+  REVERB_DT    : 0.30,   // delay time in seconds
+
+  // Motion analysis
+  VEL_SMOOTH   : 0.10,   // EMA alpha for angular velocity (lower = smoother)
+  SMOOTH_WIN   : 22,     // frames for smoothness window
+  VEL_MIN      : 0.006,  // below this → silence
+  VEL_MAX      : 0.20,   // clamp for gain mapping
+
+  // Physics
+  STRIKER_DRAG : 0.08,   // lerp fraction per frame (lower = more lag)
+  STRIKER_LEN  : 2.8,    // visual length of stick
+
+  // Visuals
+  VIB_AMP      : 0.013,  // max bowl vibration amplitude
+  RIPPLE_COUNT : 5,
+  RIPPLE_IVMS  : 380,    // base ms between ripple spawns
+  GLOW_MAX_S   : 7.0,    // max glow sprite scale
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   MODULE 1 — SCENE  (renderer · camera · lights · floor)
+══════════════════════════════════════════════════════════════════ */
+const scene    = new THREE.Scene();
+scene.fog      = new THREE.FogExp2(0x080506, 0.042);
+scene.background = new THREE.Color(0x080506);
+
+const camera   = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 80);
+camera.position.set(0, 4.8, 7.8);
+camera.lookAt(0, -0.2, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+renderer.toneMapping        = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* Lights */
+scene.add(new THREE.AmbientLight(0x2a1608, 1.4));
+
+const keyLight = new THREE.PointLight(0xffc060, 4.0, 28);
+keyLight.position.set(3.5, 8, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+scene.add(keyLight);
+
+const fillLight = new THREE.PointLight(0x2040b0, 0.9, 18);
+fillLight.position.set(-5, 3, -4);
+scene.add(fillLight);
+
+const rimLight = new THREE.PointLight(0xff9930, 1.4, 14);
+rimLight.position.set(0, 7, -6);
+scene.add(rimLight);
+
+/* Dynamic bowl glow light — intensity driven by sound */
+const bowlLight = new THREE.PointLight(0xffbb44, 0, 9);
+bowlLight.position.set(0, 1.2, 0);
+scene.add(bowlLight);
+
+/* Floor */
+const floorMesh = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 30),
+  new THREE.MeshStandardMaterial({ color: 0x0d0808, roughness: 0.92, metalness: 0.04 })
+);
+floorMesh.rotation.x = -Math.PI / 2;
+floorMesh.position.y = -2.3;
+floorMesh.receiveShadow = true;
+scene.add(floorMesh);
+
+/* ══════════════════════════════════════════════════════════════════
+   MODULE 2 — BOWL MODEL  (LatheGeometry with inner+outer profile)
+
+   How it works:
+   LatheGeometry sweeps a 2D polyline around the Y axis.
+   By tracing the OUTER wall (bottom→rim) then the INNER wall
+   (rim→bottom) as one continuous polyline, we get a solid-walled
+   bowl cross-section in a single geometry pass.
+══════════════════════════════════════════════════════════════════ */
+const bowlProfile = [
+  // ── Outer wall: base → rim (radius increases, height rises) ──
+  new THREE.Vector2(0.12, -1.28),   // bottom centre outer
+  new THREE.Vector2(0.30, -1.24),   // bottom curve
+  new THREE.Vector2(0.62, -1.10),   // lower wall
+  new THREE.Vector2(1.08, -0.85),   // mid-lower wall
+  new THREE.Vector2(1.46, -0.52),   // mid wall
+  new THREE.Vector2(1.76, -0.12),   // upper wall
+  new THREE.Vector2(1.94,  0.20),   // shoulder
+  new THREE.Vector2(2.03,  0.36),   // outer rim lip
+  // ── Rim cap (horizontal) ──
+  new THREE.Vector2(1.96,  0.40),   // rim top inner edge
+  // ── Inner wall: rim → base (radius decreases) ──
+  new THREE.Vector2(1.86,  0.28),   // inner rim
+  new THREE.Vector2(1.68, -0.04),   // inner upper wall
+  new THREE.Vector2(1.40, -0.40),   // inner mid wall
+  new THREE.Vector2(1.02, -0.70),   // inner lower wall
+  new THREE.Vector2(0.62, -0.92),   // inner curve
+  new THREE.Vector2(0.30, -1.08),   // inner base curve
+  new THREE.Vector2(0.14, -1.18),   // inner base edge
+  new THREE.Vector2(0.08, -1.24),   // inner centre
+];
+
+const bowlGeo = new THREE.LatheGeometry(bowlProfile, 128);
+const bowlMat = new THREE.MeshStandardMaterial({
+  color      : new THREE.Color(0xb8893a),
+  metalness  : 0.82,
+  roughness  : 0.20,
+  emissive   : new THREE.Color(0x1a0800),
+  emissiveIntensity: 0.0,
+});
+const bowlMesh = new THREE.Mesh(bowlGeo, bowlMat);
+bowlMesh.castShadow = true;
+bowlMesh.receiveShadow = true;
+scene.add(bowlMesh);
+
+/* Cushion ring below bowl */
+const cushion = new THREE.Mesh(
+  new THREE.TorusGeometry(0.36, 0.13, 14, 52),
+  new THREE.MeshStandardMaterial({ color: 0x5a2810, roughness: 0.92 })
+);
+cushion.rotation.x = Math.PI / 2;
+cushion.position.y = -1.34;
+scene.add(cushion);
+
+/* ══════════════════════════════════════════════════════════════════
+   MODULE 3 — STRIKER MODEL
+   A simple vertical stick with a leather-wrapped suede tip.
+   The strikerGroup is positioned at rim height; only Y-rotation
+   changes as the user moves around the circle.
+══════════════════════════════════════════════════════════════════ */
+const strikerGroup = new THREE.Group();
+
+const stickMat = new THREE.MeshStandardMaterial({
+  color: 0x6e3415, roughness: 0.78, metalness: 0.02
+});
+const stickMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.026, 0.046, CFG.STRIKER_LEN, 14),
+  stickMat
+);
+stickMesh.position.y = CFG.STRIKER_LEN / 2;   // tip at y=0, handle top at y=LEN
+stickMesh.castShadow = true;
+strikerGroup.add(stickMesh);
+
+/* Suede tip sphere */
+const tipMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(0.075, 16, 14),
+  new THREE.MeshStandardMaterial({ color: 0xc49060, roughness: 0.88, metalness: 0.0 })
+);
+// tip at y=0 of the group (touching the rim)
+strikerGroup.add(tipMesh);
+
+scene.add(strikerGroup);
+
+/* ══════════════════════════════════════════════════════════════════
+   MODULE 4 — AUDIO ENGINE
+   Architecture:
+     3× oscillators (fundamental + harmonics)
+         ↓
+     BiquadFilter (bandpass — resonance shape)
+         ↓  ↘
+     MasterGain  → Delay → FeedbackGain ⟲  (reverb tail)
+         ↓               ↓
+     DynamicsCompressor → destination
+
+   Sound modulation:
+   • masterGain   ← angular velocity  (louder = faster motion)
+   • osc frequencies ← velocity       (slight pitch rise at speed)
+   • filter.Q     ← smoothness        (smoother circle = sharper resonance)
+   • feedbackGain ← smoothness        (smoother = longer reverb tail)
+══════════════════════════════════════════════════════════════════ */
+let audioCtx, masterGain, filterNode,
+    osc1, osc2, osc3,
+    delayNode, feedbackGain, compressor;
+let audioReady = false;
+
+function initAudio() {
+  if (audioReady) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  /* ── Final stage: compressor prevents clipping ── */
+  compressor = audioCtx.createDynamicsCompressor();
+  compressor.threshold.value = -10;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.002;
+  compressor.release.value = 0.20;
+  compressor.connect(audioCtx.destination);
+
+  /* ── Master gain (velocity-driven) ── */
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+  masterGain.connect(compressor);
+
+  /* ── Reverb: delay with feedback loop ──
+     Simulates the long resonant decay of a Tibetan bowl.
+     The delay signal is low-pass filtered (darker tail) and
+     fed back into the delay input with gain < 1 (stable).      */
+  delayNode    = audioCtx.createDelay(2.0);
+  delayNode.delayTime.value = CFG.REVERB_DT;
+
+  feedbackGain = audioCtx.createGain();
+  feedbackGain.gain.value = CFG.REVERB_FB;
+
+  const rvFilter = audioCtx.createBiquadFilter();
+  rvFilter.type            = 'lowpass';
+  rvFilter.frequency.value = 1600;
+
+  delayNode.connect(rvFilter);
+  rvFilter.connect(feedbackGain);
+  feedbackGain.connect(delayNode);   // feedback loop
+  feedbackGain.connect(masterGain);  // reverb output → master
+
+  /* ── Resonance filter (bandpass around fundamental) ──
+     High Q = very narrow peak = bell-like ring.
+     Q is driven by smoothness metric.                          */
+  filterNode = audioCtx.createBiquadFilter();
+  filterNode.type            = 'bandpass';
+  filterNode.frequency.value = CFG.FREQ_BASE;
+  filterNode.Q.value         = 3.0;
+  filterNode.connect(masterGain);
+  filterNode.connect(delayNode);    // also feed reverb
+
+  /* ── Oscillator 1: Fundamental (~220 Hz) ── */
+  osc1 = audioCtx.createOscillator();
+  osc1.type            = 'sine';
+  osc1.frequency.value = CFG.FREQ_BASE;
+  const g1 = audioCtx.createGain();
+  g1.gain.value = 0.62;
+  osc1.connect(g1); g1.connect(filterNode);
+
+  /* ── Oscillator 2: 2nd harmonic, slightly detuned ──
+     The tiny detuning creates a slow "beating" (wah-like flutter)
+     exactly like real metal bowls.                              */
+  osc2 = audioCtx.createOscillator();
+  osc2.type            = 'sine';
+  osc2.frequency.value = CFG.FREQ_BASE * CFG.FREQ_HARMONY;
+  const g2 = audioCtx.createGain();
+  g2.gain.value = 0.26;
+  osc2.connect(g2); g2.connect(filterNode);
+
+  /* ── Oscillator 3: 3rd harmonic shimmer ── */
+  osc3 = audioCtx.createOscillator();
+  osc3.type            = 'sine';
+  osc3.frequency.value = CFG.FREQ_BASE * CFG.FREQ_SHIMMER;
+  const g3 = audioCtx.createGain();
+  g3.gain.value = 0.08;
+  osc3.connect(g3); g3.connect(filterNode);
+
+  osc1.start(); osc2.start(); osc3.start();
+  audioReady = true;
+}
+
+/**
+ * updateAudio — called every animation frame
+ *
+ * @param {number} velocity   – smoothed angular velocity (rad/s)
+ * @param {number} smoothness – 0 (irregular) to 1 (perfect circles)
+ *
+ * Sound modulation rules:
+ *  VOLUME  = f(velocity) × f(smoothness)   — irregular breaks sound
+ *  PITCH   = base + small Δ at high speed   — centrifugal vibration
+ *  FILTER Q = 2 + smoothness×30             — smooth → resonant ring
+ *  REVERB  = 0.45 + smoothness×0.22        — smooth → longer tail
+ */
+function updateAudio(velocity, smoothness) {
+  if (!audioReady) return;
+  const t = audioCtx.currentTime;
+
+  // 0–1 normalised velocity
+  const nv = Math.min(Math.max((velocity - CFG.VEL_MIN) / (CFG.VEL_MAX - CFG.VEL_MIN), 0), 1);
+
+  // Volume: velocity × consistency penalty
+  const consist = smoothness < 0.3 ? smoothness / 0.3 : 1.0;
+  const targetGain = nv * consist * 0.30;
+  masterGain.gain.setTargetAtTime(targetGain, t, 0.07);
+
+  // Pitch shift: up to ~8 cents at max speed
+  const semis = nv * 8 / 100;
+  const newF = CFG.FREQ_BASE * Math.pow(2, semis);
+  osc1.frequency.setTargetAtTime(newF,                     t, 0.14);
+  osc2.frequency.setTargetAtTime(newF * CFG.FREQ_HARMONY,  t, 0.14);
+  osc3.frequency.setTargetAtTime(newF * CFG.FREQ_SHIMMER,  t, 0.14);
+  filterNode.frequency.setTargetAtTime(newF,               t, 0.14);
+
+  // Resonance: smooth motion → high Q → singing bell ring
+  filterNode.Q.setTargetAtTime(2 + smoothness * 32, t, 0.22);
+
+  // Reverb sustain: longer when smooth
+  feedbackGain.gain.setTargetAtTime(0.45 + smoothness * 0.22, t, 0.30);
+
+  // UI frequency readout
+  const fEl = document.getElementById('freq-label');
+  if (fEl) fEl.textContent = nv > 0.05 ? `${Math.round(newF)} Hz` : '— Hz';
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MODULE 5 — INTERACTION & MOTION DETECTION
+
+   How motion detection works:
+   ① Every pointer/touch move event → cast a ray from camera
+   ② Intersect with the horizontal plane at RIM_HEIGHT (Y-plane)
+   ③ Normalise hit point to RIM_RADIUS circle (snap to rim)
+   ④ Compute current angle: θ = atan2(z, x)
+   ⑤ Δθ per frame (with ±π wraparound correction)
+   ⑥ Instantaneous angular velocity = |Δθ| / Δt
+   ⑦ EMA-smooth the velocity to remove jitter
+   ⑧ Smoothness = 1 − (stddev / mean) of last N velocities
+      → high smoothness = consistent circular motion
+      → low smoothness = stopping/reversing/jittery
+══════════════════════════════════════════════════════════════════ */
+const _mouse    = new THREE.Vector2();
+const _rimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -CFG.RIM_HEIGHT);
+const _raycaster = new THREE.Raycaster();
+const _hit      = new THREE.Vector3();
+
+/* Striker state — physics smoothing */
+const strikerPos    = { x: CFG.RIM_RADIUS, z: 0 }; // actual (lagged)
+const strikerTarget = { x: CFG.RIM_RADIUS, z: 0 }; // desired (mouse)
+
+/* Motion state */
+let prevAngle     = 0;
+let smoothVel     = 0;   // EMA-smoothed angular velocity
+let smoothness    = 0;   // 0–1 motion consistency
+let isOnRim       = false;
+let lastMoveTime  = performance.now();
+const velHistory  = [];  // rolling window for smoothness calc
+
+/* Project pointer onto rim plane and snap to rim circle */
+function getRimPoint(cx, cy) {
+  _mouse.x =  (cx / innerWidth)  * 2 - 1;
+  _mouse.y = -(cy / innerHeight) * 2 + 1;
+  _raycaster.setFromCamera(_mouse, camera);
+
+  if (!_raycaster.ray.intersectPlane(_rimPlane, _hit)) return null;
+
+  const d = Math.sqrt(_hit.x * _hit.x + _hit.z * _hit.z);
+  if (d < 0.01) return null;
+
+  return {
+    x      : (_hit.x / d) * CFG.RIM_RADIUS,
+    z      : (_hit.z / d) * CFG.RIM_RADIUS,
+    rawDist: d,
+    onRim  : Math.abs(d - CFG.RIM_RADIUS) < CFG.RIM_BAND,
+  };
+}
+
+/**
+ * analyzeMotion — computes smoothed velocity + smoothness metric
+ * @param {number} newAngle – current atan2 angle in radians
+ * @param {number} dt       – frame delta time in seconds
+ */
+function analyzeMotion(newAngle, dt) {
+  // Δangle with wraparound correction
+  let delta = newAngle - prevAngle;
+  if (delta >  Math.PI) delta -= 2 * Math.PI;
+  if (delta < -Math.PI) delta += 2 * Math.PI;
+
+  // Instantaneous angular velocity (rad/s)
+  const instV = Math.abs(delta) / Math.max(dt, 0.008);
+
+  // EMA smooth
+  smoothVel = CFG.VEL_SMOOTH * instV + (1 - CFG.VEL_SMOOTH) * smoothVel;
+
+  // Rolling history for smoothness
+  velHistory.push(smoothVel);
+  if (velHistory.length > CFG.SMOOTH_WIN) velHistory.shift();
+
+  if (velHistory.length >= 5) {
+    const mean = velHistory.reduce((a, b) => a + b, 0) / velHistory.length;
+    if (mean > CFG.VEL_MIN) {
+      const variance = velHistory.reduce((s, v) => s + (v - mean) ** 2, 0) / velHistory.length;
+      const raw = 1 - Math.min(Math.sqrt(variance) / (mean + 1e-5), 1);
+      smoothness = smoothness * 0.93 + raw * 0.07;
+    } else {
+      smoothness *= 0.97;
+    }
+  }
+
+  prevAngle = newAngle;
+}
+
+function onPointer(cx, cy) {
+  if (!audioReady) return;
+  const p = getRimPoint(cx, cy);
+  if (!p) return;
+
+  isOnRim = p.onRim;
+
+  if (p.onRim) {
+    strikerTarget.x = p.x;
+    strikerTarget.z = p.z;
+
+    const now = performance.now();
+    const dt  = (now - lastMoveTime) / 1000;
+    lastMoveTime = now;
+    analyzeMotion(Math.atan2(p.z, p.x), dt);
+  }
+}
+
+// Mouse
+addEventListener('mousemove', e => onPointer(e.clientX, e.clientY));
+
+// Touch (passive:false to allow preventDefault)
+addEventListener('touchmove', e => {
+  e.preventDefault();
+  onPointer(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+addEventListener('touchstart', e => {
+  e.preventDefault();
+  onPointer(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+/* Decay velocity when pointer is idle */
+function decayMotion(dt) {
+  const idle = (performance.now() - lastMoveTime) / 1000;
+  if (idle > 0.12) {
+    smoothVel  *= Math.pow(0.15, dt);   // fast decay
+    smoothness *= Math.pow(0.40, dt);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MODULE 6 — VISUAL FEEDBACK
+   • Bowl vibration (position + scale oscillation)
+   • Glow sprite (additive canvas-gradient sprite)
+   • Ripple pool  (expanding TorusGeometry rings)
+   • Particle field (floating ambient specks)
+══════════════════════════════════════════════════════════════════ */
+
+/* ── Glow sprite ── */
+function makeGlowTex() {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 256;
+  const ctx = cv.getContext('2d');
+  const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0.00, 'rgba(255,210,70,0.90)');
+  g.addColorStop(0.20, 'rgba(230,150,25,0.55)');
+  g.addColorStop(0.55, 'rgba(180,90,10,0.18)');
+  g.addColorStop(1.00, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(cv);
+}
+
+const glowSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+  map       : makeGlowTex(),
+  blending  : THREE.AdditiveBlending,
+  transparent: true,
+  opacity   : 0,
+  depthWrite: false,
+}));
+glowSprite.position.set(0, CFG.RIM_HEIGHT - 0.4, 0);
+glowSprite.scale.set(4, 4, 1);
+scene.add(glowSprite);
+let glowOpacity = 0;
+
+/* ── Ripple ring pool ── */
+const ripplePool = Array.from({ length: CFG.RIPPLE_COUNT }, () => {
+  const m = new THREE.Mesh(
+    new THREE.TorusGeometry(CFG.RIM_RADIUS, 0.024, 8, 88),
+    new THREE.MeshBasicMaterial({
+      color     : 0xffcc44,
+      transparent: true,
+      opacity   : 0,
+      blending  : THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  m.rotation.x = Math.PI / 2;
+  m.position.y = CFG.RIM_HEIGHT + 0.04;
+  scene.add(m);
+  return { mesh: m, active: false, progress: 0, speed: 1, maxOpacity: 0.5 };
+});
+let rippleIdx = 0, lastRippleMs = 0;
+
+function spawnRipple(intensity) {
+  const r = ripplePool[rippleIdx++ % CFG.RIPPLE_COUNT];
+  r.active     = true;
+  r.progress   = 0;
+  r.speed      = 0.45 + intensity * 0.9;
+  r.maxOpacity = 0.55 * intensity;
+  r.mesh.scale.set(1, 1, 1);
+  r.mesh.material.opacity = r.maxOpacity;
+}
+
+/* ── Ambient particles ── */
+const PCOUNT = 200;
+const pPos   = new Float32Array(PCOUNT * 3);
+const pData  = [];
+for (let i = 0; i < PCOUNT; i++) {
+  const r = 2.2 + Math.random() * 4.5;
+  const θ = Math.random() * Math.PI * 2;
+  const φ = (Math.random() - 0.5) * Math.PI;
+  pPos[i*3]   = r * Math.cos(θ) * Math.cos(φ);
+  pPos[i*3+1] = r * Math.sin(φ) + 1.2;
+  pPos[i*3+2] = r * Math.sin(θ) * Math.cos(φ);
+  pData.push({
+    drift   : (Math.random() - 0.5) * 0.0025,
+    bobPhase: Math.random() * Math.PI * 2,
+    bobSpeed: 0.45 + Math.random() * 0.9,
+  });
+}
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+const pPoints = new THREE.Points(pGeo,
+  new THREE.PointsMaterial({
+    color     : 0xffaa33,
+    size      : 0.028,
+    transparent: true,
+    opacity   : 0.28,
+    blending  : THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+  })
+);
+scene.add(pPoints);
+
+/* ══════════════════════════════════════════════════════════════════
+   MODULE 7 — ANIMATION LOOP
+   Frame order:
+   1. decay idle motion
+   2. compute intensity (velocity × smoothness)
+   3. update audio parameters
+   4. update striker physics (drag/lag)
+   5. vibrate bowl mesh
+   6. update glow sprite
+   7. update ripple rings
+   8. animate particles
+   9. update HUD
+  10. render frame
+══════════════════════════════════════════════════════════════════ */
+let globalTime = 0;
+let prevFrameTime = performance.now();
+
+function updateStriker(dt) {
+  /* Frame-rate-independent exponential lerp */
+  const lf = 1 - Math.pow(1 - CFG.STRIKER_DRAG, dt * 60);
+  strikerPos.x += (strikerTarget.x - strikerPos.x) * lf;
+  strikerPos.z += (strikerTarget.z - strikerPos.z) * lf;
+
+  /* Re-clamp to rim circle after lerp */
+  const d = Math.sqrt(strikerPos.x * strikerPos.x + strikerPos.z * strikerPos.z);
+  if (d > 0.01) {
+    strikerPos.x = (strikerPos.x / d) * CFG.RIM_RADIUS;
+    strikerPos.z = (strikerPos.z / d) * CFG.RIM_RADIUS;
+  }
+
+  strikerGroup.position.set(strikerPos.x, CFG.RIM_HEIGHT, strikerPos.z);
+  /* Rotate group so stick faces tangentially */
+  strikerGroup.rotation.y = -Math.atan2(strikerPos.z, strikerPos.x);
+  /* Slight inward lean of the stick mesh */
+  stickMesh.rotation.z = 0.18;
+}
+
+function updateBowl(t, intensity) {
+  const vf  = 11;                                        // vibration frequency
+  const amp = CFG.VIB_AMP * intensity;
+  bowlMesh.position.y = Math.sin(t * vf) * amp * 0.45;
+  bowlMesh.position.x = Math.sin(t * vf * 1.28 + 0.6) * amp * 0.28;
+  const pulse = 1 + Math.sin(t * vf * 0.9) * amp * 0.012;
+  bowlMesh.scale.setScalar(pulse);
+  bowlMat.emissiveIntensity = intensity * 0.48;
+  bowlLight.intensity       = intensity * 3.0;
+}
+
+function updateGlow(intensity, dt) {
+  const target = intensity * 0.80;
+  glowOpacity += (target - glowOpacity) * Math.min(dt * 5, 1);
+  glowSprite.material.opacity = glowOpacity;
+  const sc = 3.5 + intensity * 3.8 + Math.sin(globalTime * 7) * 0.08 * intensity;
+  glowSprite.scale.set(sc, sc, 1);
+}
+
+function updateRipples(intensity, dt) {
+  const now = performance.now();
+  /* Spawn interval shrinks as intensity grows */
+  if (intensity > 0.08 && now - lastRippleMs > CFG.RIPPLE_IVMS / Math.max(intensity * 1.5, 0.15)) {
+    spawnRipple(intensity);
+    lastRippleMs = now;
+  }
+  for (const r of ripplePool) {
+    if (!r.active) continue;
+    r.progress += dt * r.speed;
+    if (r.progress >= 1) {
+      r.active = false;
+      r.mesh.material.opacity = 0;
+      r.mesh.scale.set(1, 1, 1);
+      continue;
+    }
+    const s = 1 + r.progress * 2.8;
+    r.mesh.scale.set(s, s, 1);
+    r.mesh.material.opacity = r.maxOpacity * (1 - r.progress);
+  }
+}
+
+function updateParticles(t, intensity) {
+  const pos = pGeo.attributes.position.array;
+  for (let i = 0; i < PCOUNT; i++) {
+    const p = pData[i];
+    pos[i*3+1] += Math.sin(t * p.bobSpeed + p.bobPhase) * 0.0008;
+    pos[i*3]   += p.drift;
+    /* Particles drift toward bowl when singing */
+    if (intensity > 0.18) {
+      const dx = -pos[i*3], dy = 0.8 - pos[i*3+1], dz = -pos[i*3+2];
+      const d2 = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      if (d2 > 0.6) {
+        pos[i*3]   += dx / d2 * intensity * 0.0035;
+        pos[i*3+1] += dy / d2 * intensity * 0.0018;
+        pos[i*3+2] += dz / d2 * intensity * 0.0035;
+      }
+    }
+    /* Respawn out-of-range particles */
+    const rr = pos[i*3]**2 + pos[i*3+1]**2 + pos[i*3+2]**2;
+    if (rr > 70 || rr < 0.1) {
+      const θ = Math.random() * Math.PI * 2;
+      const r = 3 + Math.random() * 3.5;
+      pos[i*3]   = r * Math.cos(θ);
+      pos[i*3+1] = (Math.random() - 0.2) * 4.5;
+      pos[i*3+2] = r * Math.sin(θ);
+    }
+  }
+  pGeo.attributes.position.needsUpdate = true;
+  pPoints.material.opacity = 0.18 + intensity * 0.45;
+}
+
+function updateHUD(intensity) {
+  const fill = document.getElementById('bar-fill');
+  const lbl  = document.getElementById('status-label');
+  if (fill) fill.style.width = (intensity * 100).toFixed(1) + '%';
+  if (!lbl) return;
+  if (!audioReady) {
+    lbl.textContent = 'Tap to begin';
+    lbl.classList.remove('active');
+  } else if (!isOnRim) {
+    lbl.textContent = 'Place cursor on the rim';
+    lbl.classList.remove('active');
+  } else if (intensity < 0.07) {
+    lbl.textContent = 'Move in circles to play';
+    lbl.classList.toggle('active', false);
+  } else if (smoothness > 0.72) {
+    lbl.textContent = '✦  Resonating  ✦';
+    lbl.classList.add('active');
+  } else if (intensity > 0.55) {
+    lbl.textContent = 'Steady the circle...';
+    lbl.classList.add('active');
+  } else {
+    lbl.textContent = 'Keep moving…';
+    lbl.classList.add('active');
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const now = performance.now();
+  const dt  = Math.min((now - prevFrameTime) / 1000, 0.05);
+  prevFrameTime = now;
+  globalTime   += dt;
+
+  decayMotion(dt);
+
+  /* Combined intensity: velocity contribution weighted by smoothness */
+  const nv        = Math.min(Math.max((smoothVel - CFG.VEL_MIN) / (CFG.VEL_MAX - CFG.VEL_MIN), 0), 1);
+  const intensity = nv * (0.35 + smoothness * 0.65);
+
+  updateAudio(smoothVel, smoothness);
+  updateStriker(dt);
+  updateBowl(globalTime, intensity);
+  updateGlow(intensity, dt);
+  updateRipples(intensity, dt);
+  updateParticles(globalTime, intensity);
+  updateHUD(intensity);
+
+  /* Slow idle rotation when not playing */
+  if (smoothVel < CFG.VEL_MIN * 1.5) {
+    const idleSpin = 0.0028 * dt * 60;
+    bowlMesh.rotation.y += idleSpin;
+    cushion.rotation.y  += idleSpin;
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   INIT — kick off on first user gesture (required for Web Audio)
+══════════════════════════════════════════════════════════════════ */
+const startScreen = document.getElementById('start-screen');
+
+function startExperience() {
+  initAudio();
+  startScreen.classList.add('hidden');
+  setTimeout(() => { startScreen.style.display = 'none'; }, 1000);
+}
+
+startScreen.addEventListener('click',    startExperience);
+startScreen.addEventListener('touchend', startExperience, { passive: false });
+
+/* Render loop starts immediately so the bowl is visible before interaction */
+animate();
+</script>
+</body>
+</html>

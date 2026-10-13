@@ -1,0 +1,61 @@
+project_id = "hzlinabncewcahdnobet"
+
+[functions.purchase-credits]
+verify_jwt = false
+
+[functions.spend-credits]
+verify_jwt = false
+
+[functions.generate-spoc-qr]
+verify_jwt = false
+
+[functions.validate-spoc-qr]
+verify_jwt = false
+
+[functions.stability-pool-contribute]
+verify_jwt = false
+
+[functions.videosdk-token]
+verify_jwt = false
+
+[functions.ai-transcribe]
+verify_jwt = false
+
+[functions.ai-moderate]
+verify_jwt = false
+
+[functions.create-bulk-temp-ids]
+verify_jwt = false
+
+[functions.verify-temp-credentials]
+verify_jwt = false
+
+[functions.activate-account]
+verify_jwt = false
+
+[functions.admin-delete-member]
+verify_jwt = false
+
+[functions.admin-delete-institution]
+verify_jwt = false
+
+[functions.get-emergency-contact]
+verify_jwt = false
+
+[functions.escalate-emergency]
+verify_jwt = false
+
+[functions.verify-student-id]
+verify_jwt = false
+
+[functions.get-recovery-hints]
+verify_jwt = false
+
+[functions.recover-password]
+verify_jwt = false
+
+[functions.request-account-deletion]
+verify_jwt = false
+
+[functions.indexnow-submit]
+verify_jwt = false

@@ -1,0 +1,1 @@
+ALTER TABLE public.peer_sessions ADD COLUMN IF NOT EXISTS room_id text;

@@ -1,0 +1,370 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fonts loaded via <link> in index.html for non-blocking render */
+
+@layer base {
+  :root {
+    /* Eternia Soft — MindEase-inspired warm cream palette */
+    --background: 36 50% 96%;          /* #FBF5EC cream */
+    --foreground: 229 38% 17%;         /* deep ink */
+
+    --card: 0 0% 100%;
+    --card-foreground: 229 38% 17%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 229 38% 17%;
+
+    --primary: 243 100% 69%;           /* Eternia Purple */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 36 60% 92%;           /* warm cream surface */
+    --secondary-foreground: 229 38% 17%;
+
+    --muted: 36 30% 90%;
+    --muted-foreground: 229 15% 42%;
+
+    --accent: 12 94% 68%;              /* Coral */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 68% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 36 25% 86%;
+    --input: 36 25% 90%;
+    --ring: 243 100% 69%;
+
+    --radius: 1.5rem;                  /* softer 24px corners */
+
+    /* Eternia brand tokens (kept) */
+    --eternia-teal: 243 100% 69%;
+    --eternia-teal-glow: 243 100% 79%;
+    --eternia-lavender: 12 94% 68%;
+    --eternia-lavender-glow: 12 94% 78%;
+    --eternia-violet: 41 100% 67%;
+    --eternia-violet-glow: 41 100% 77%;
+    --eternia-dark: 229 38% 17%;
+    --eternia-dark-card: 0 0% 100%;
+    --eternia-dark-elevated: 36 60% 94%;
+    --eternia-success: 158 64% 46%;
+    --eternia-warning: 41 100% 67%;
+    --eternia-gradient-start: 243 100% 69%;
+    --eternia-gradient-end: 12 94% 68%;
+
+    /* MindEase-style pastel surface tints */
+    --surface-cream: 36 50% 96%;
+    --surface-pink: 354 100% 92%;      /* #FFD9DC */
+    --surface-butter: 44 93% 82%;      /* #FCE6A8 */
+    --surface-mint: 140 38% 86%;       /* #CFE8D8 */
+    --surface-sky: 213 67% 88%;        /* #CFE0F4 */
+    --surface-lavender: 246 53% 90%;   /* #D9D6F5 */
+    --surface-peach: 28 92% 86%;       /* #FCD9B8 */
+
+    --sidebar-background: 36 50% 96%;
+    --sidebar-foreground: 229 38% 17%;
+    --sidebar-primary: 243 100% 69%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 36 30% 90%;
+    --sidebar-accent-foreground: 229 38% 17%;
+    --sidebar-border: 36 25% 86%;
+    --sidebar-ring: 243 100% 69%;
+  }
+
+  .dark {
+    --background: 229 38% 12%;
+    --foreground: 36 30% 94%;
+    --card: 229 30% 17%;
+    --card-foreground: 36 30% 94%;
+    --popover: 229 30% 17%;
+    --popover-foreground: 36 30% 94%;
+    --secondary: 229 25% 22%;
+    --secondary-foreground: 36 30% 94%;
+    --muted: 229 25% 22%;
+    --muted-foreground: 229 15% 65%;
+    --border: 229 25% 25%;
+    --input: 229 25% 22%;
+
+    --surface-cream: 229 30% 17%;
+    --surface-pink: 354 35% 30%;
+    --surface-butter: 44 35% 28%;
+    --surface-mint: 140 25% 25%;
+    --surface-sky: 213 30% 28%;
+    --surface-lavender: 246 30% 30%;
+    --surface-peach: 28 35% 28%;
+
+    --sidebar-background: 229 30% 14%;
+    --sidebar-foreground: 36 30% 94%;
+    --sidebar-accent: 229 25% 22%;
+    --sidebar-accent-foreground: 36 30% 94%;
+    --sidebar-border: 229 25% 25%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fraunces', 'Outfit', system-ui, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Fraunces', 'Outfit', system-ui, serif !important;
+  }
+
+  .text-gradient {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    background-image: linear-gradient(to right, hsl(var(--eternia-teal)), hsl(var(--eternia-lavender)));
+  }
+
+  .text-gradient-violet {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--eternia-lavender)), hsl(var(--eternia-violet-glow)));
+  }
+
+  .bg-gradient-eternia {
+    background-image: linear-gradient(to right, hsl(var(--eternia-teal)), hsl(var(--eternia-lavender)));
+  }
+
+  .bg-gradient-eternia-subtle {
+    background: linear-gradient(135deg, hsl(var(--eternia-teal) / 0.08), hsl(var(--eternia-lavender) / 0.08));
+  }
+
+  .bg-gradient-violet {
+    background: linear-gradient(135deg, hsl(var(--eternia-lavender) / 0.12), hsl(var(--eternia-violet) / 0.04));
+  }
+
+  .border-gradient-eternia {
+    border: 1px solid transparent;
+    background: linear-gradient(hsl(var(--background)), hsl(var(--background))) padding-box,
+                linear-gradient(135deg, hsl(var(--eternia-teal)), hsl(var(--eternia-lavender))) border-box;
+  }
+
+  .glow-teal {
+    box-shadow: 0 0 30px hsl(var(--eternia-teal) / 0.25), 0 0 60px hsl(var(--eternia-teal) / 0.08);
+  }
+
+  .glow-lavender {
+    box-shadow: 0 0 30px hsl(var(--eternia-lavender) / 0.25), 0 0 60px hsl(var(--eternia-lavender) / 0.08);
+  }
+
+  .glass {
+    @apply bg-card/60 backdrop-blur-2xl border border-border/40;
+  }
+
+  .glass-strong {
+    @apply bg-card/85 backdrop-blur-2xl border border-border/40;
+  }
+
+  /* MindEase-style pastel surfaces */
+  .surface-pink     { background-color: hsl(var(--surface-pink)); }
+  .surface-butter   { background-color: hsl(var(--surface-butter)); }
+  .surface-mint     { background-color: hsl(var(--surface-mint)); }
+  .surface-sky      { background-color: hsl(var(--surface-sky)); }
+  .surface-lavender { background-color: hsl(var(--surface-lavender)); }
+  .surface-peach    { background-color: hsl(var(--surface-peach)); }
+  .surface-cream    { background-color: hsl(var(--surface-cream)); }
+
+  .shadow-soft {
+    box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+  }
+  .shadow-soft-lg {
+    box-shadow: 0 18px 50px -10px rgb(0 0 0 / 0.08), 0 4px 12px rgb(0 0 0 / 0.04);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-eternia text-primary-foreground font-semibold px-6 py-3 rounded-full
+           hover:opacity-90 transition-all duration-200 shadow-lg shadow-primary/15;
+  }
+
+  .btn-secondary {
+    @apply border border-border bg-card text-foreground font-medium px-6 py-3 rounded-full
+           hover:bg-muted transition-all duration-200;
+  }
+
+  .input-eternia {
+    @apply bg-card border border-border rounded-2xl px-4 py-3 w-full
+           focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary
+           placeholder:text-muted-foreground transition-all duration-200;
+  }
+
+  .portal-card {
+    @apply relative overflow-hidden rounded-3xl p-5 sm:p-6 transition-all duration-300
+           hover:shadow-soft-lg hover:-translate-y-1 cursor-pointer active:scale-[0.98];
+  }
+
+  /* Soft pastel card — the new Eternia base surface */
+  .card-soft {
+    @apply rounded-3xl bg-card border border-border/40 shadow-soft;
+  }
+
+  /* Pill — used for tags, chips, date badges */
+  .pill {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+           bg-card border border-border/50 text-foreground/80;
+  }
+
+  /* Mood emoji chip */
+  .mood-chip {
+    @apply w-12 h-12 rounded-full flex items-center justify-center text-2xl
+           bg-card border border-border/40 transition-all active:scale-90;
+  }
+
+  /* Pastel tile presets — used for activity tiles */
+  .tile-pastel-pink     { @apply rounded-3xl p-5 surface-pink     text-foreground/90 shadow-soft transition-all hover:-translate-y-0.5; }
+  .tile-pastel-butter   { @apply rounded-3xl p-5 surface-butter   text-foreground/90 shadow-soft transition-all hover:-translate-y-0.5; }
+  .tile-pastel-mint     { @apply rounded-3xl p-5 surface-mint     text-foreground/90 shadow-soft transition-all hover:-translate-y-0.5; }
+  .tile-pastel-sky      { @apply rounded-3xl p-5 surface-sky      text-foreground/90 shadow-soft transition-all hover:-translate-y-0.5; }
+  .tile-pastel-lavender { @apply rounded-3xl p-5 surface-lavender text-foreground/90 shadow-soft transition-all hover:-translate-y-0.5; }
+  .tile-pastel-peach    { @apply rounded-3xl p-5 surface-peach    text-foreground/90 shadow-soft transition-all hover:-translate-y-0.5; }
+
+  .section-title {
+    @apply text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight font-display;
+  }
+
+  .section-subtitle {
+    @apply text-muted-foreground text-base sm:text-lg max-w-2xl;
+  }
+
+  /* Card table — felt surface */
+  .card-table {
+    background:
+      radial-gradient(ellipse at 50% 30%, hsl(229 38% 22% / 0.6) 0%, transparent 70%),
+      hsl(229 38% 14%);
+    box-shadow:
+      inset 0 2px 20px rgba(0, 0, 0, 0.4),
+      inset 0 0 60px rgba(0, 0, 0, 0.15),
+      0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Safe area for mobile bottom nav */
+  .pb-safe {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes wave-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+  will-change: background-position;
+}
+
+.mask-gradient {
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.h-13 {
+  height: 3.25rem;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-pulse-glow,
+  .animate-gradient {
+    animation: none !important;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* GPU acceleration for animated elements */
+.portal-card,
+.glass,
+.glass-strong {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Content visibility for long lists */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 80px;
+}
