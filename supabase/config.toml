@@ -62,3 +62,30 @@ verify_jwt = false
 
 [functions.indexnow-submit]
 verify_jwt = false
+
+[functions.claim-l3-session]
+verify_jwt = false
+
+[functions.grant-credits]
+verify_jwt = false
+
+[functions.refund-blackbox-session]
+verify_jwt = false
+
+[functions.add-member]
+verify_jwt = false
+
+[functions.bulk-add-members]
+verify_jwt = false
+
+[functions.seed-admin]
+verify_jwt = false
+
+[functions.stability-pool-auto-contribute]
+verify_jwt = false
+
+[functions.generate-analytics-report]
+verify_jwt = false
+
+[functions.approve-password-reset]
+verify_jwt = false
