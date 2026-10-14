@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { FunctionsHttpError } from "@supabase/supabase-js";
+import { FunctionsHttpError, FunctionsFetchError } from "@supabase/supabase-js";
 
 export type MediaSessionKind = "appointment" | "peer" | "blackbox" | "l3";
 
@@ -21,9 +21,17 @@ interface ParsedFunctionError {
 }
 
 const isAuthErrorMessage = (message: string) =>
-  /session|jwt|token|unauthorized|auth|expired/i.test(message);
+  /jwt\s*(expired|invalid)|invalid\s*jwt|token\s*expired|invalid\s*claim|PGRST301/i.test(message);
 
 const parseInvokeError = async (error: unknown): Promise<ParsedFunctionError> => {
+  if (error instanceof FunctionsFetchError || (error instanceof Error && error.name === "FunctionsFetchError")) {
+    return {
+      message:
+        "Unable to reach the LiveKit media function. Please verify that the 'livekit-token' Edge Function is deployed to your Supabase project.",
+      retryableAuth: false,
+    };
+  }
+
   if (error instanceof FunctionsHttpError) {
     let details = "LiveKit service request failed";
     let code: string | undefined;
@@ -47,7 +55,7 @@ const parseInvokeError = async (error: unknown): Promise<ParsedFunctionError> =>
   const message = error instanceof Error ? error.message : String(error);
   return {
     message: message || "Media service request failed",
-    retryableAuth: isAuthErrorMessage(message),
+    retryableAuth: false,
   };
 };
 
@@ -58,8 +66,14 @@ const parseInvokeError = async (error: unknown): Promise<ParsedFunctionError> =>
 export async function getLiveKitToken(request: LiveKitTokenRequest): Promise<LiveKitTokenResponse> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
-    const { error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError) throw new Error("Session expired. Please sign in again.");
+    if (session?.refresh_token) {
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshed?.session?.access_token) {
+        throw new Error("Session expired. Please sign in again.");
+      }
+    } else {
+      throw new Error("You must be signed in to connect to the session.");
+    }
   }
 
   const callFn = async (): Promise<LiveKitTokenResponse> => {
@@ -83,7 +97,7 @@ export async function getLiveKitToken(request: LiveKitTokenRequest): Promise<Liv
   } catch (err) {
     const parsed = await parseInvokeError(err);
 
-    if (parsed.retryableAuth) {
+    if (parsed.retryableAuth && session?.refresh_token) {
       const { error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError) throw new Error("Session expired. Please sign in again.");
 
@@ -99,3 +113,4 @@ export async function getLiveKitToken(request: LiveKitTokenRequest): Promise<Liv
     throw new Error(parsed.message);
   }
 }
+

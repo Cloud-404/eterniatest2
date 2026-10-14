@@ -49,9 +49,9 @@ describe("LiveKit Token & Service Integration", () => {
     });
   });
 
-  it("attempts session refresh when session token is missing", async () => {
+  it("attempts session refresh when session token is missing but refresh token exists", async () => {
     (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: null },
+      data: { session: { access_token: null, refresh_token: "mock-refresh" } },
     });
     (supabase.auth.refreshSession as any).mockResolvedValue({
       error: new Error("Refresh token expired"),
@@ -63,6 +63,19 @@ describe("LiveKit Token & Service Integration", () => {
         id: "22222222-2222-2222-2222-222222222222",
       })
     ).rejects.toThrow("Session expired. Please sign in again.");
+  });
+
+  it("throws authentication error immediately when no session exists", async () => {
+    (supabase.auth.getSession as any).mockResolvedValue({
+      data: { session: null },
+    });
+
+    await expect(
+      getLiveKitToken({
+        kind: "peer",
+        id: "22222222-2222-2222-2222-222222222222",
+      })
+    ).rejects.toThrow("You must be signed in to connect to the session.");
   });
 
   it("throws descriptive error when media service response is missing token", async () => {
